@@ -9,6 +9,9 @@ cmake-build-*/
 *.lib
 *.exp
 
+# Exception: include release executables
+!releases/**/*.exe
+
 # Generated files (keep app.ico for distribution)
 tools/*.exe
 tools/*.obj
