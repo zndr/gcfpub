@@ -2,11 +2,11 @@
 ; MilleWin CF Extractor - Inno Setup Script
 ; ============================================================================
 ; Questo script crea un installer per MilleWin CF Extractor
-; con supporto per avvio automatico tramite Task Scheduler
+; con supporto per avvio automatico tramite collegamento Startup
 ; ============================================================================
 
 #define MyAppName "MilleWin CF Extractor"
-#define MyAppVersion "1.1.0"
+#define MyAppVersion "1.2.0"
 #define MyAppPublisher "MWCFExtractor"
 #define MyAppExeName "mwcf_extractor.exe"
 #define MyAppId "MWCFExtractor"
@@ -64,6 +64,8 @@ Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{group}\Disinstalla {#MyAppName}"; Filename: "{uninstallexe}"
 ; Icona sul Desktop (opzionale)
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+; Collegamento nella cartella Startup (per avvio automatico)
+Name: "{userstartup}\MWCFExtractor"; Filename: "{app}\{#MyAppExeName}"; Tasks: autostart
 
 [Registry]
 ; Chiave per identificare l'installazione
@@ -71,16 +73,12 @@ Root: HKLM; Subkey: "SOFTWARE\{#MyAppId}"; Flags: uninsdeletekeyifempty
 Root: HKLM; Subkey: "SOFTWARE\{#MyAppId}"; ValueType: string; ValueName: "InstallPath"; ValueData: "{app}"; Flags: uninsdeletevalue
 
 [Run]
-; Crea il task di autostart se selezionato
-Filename: "schtasks.exe"; Parameters: "/Create /TN ""MWCFExtractor_Autostart"" /TR ""{app}\{#MyAppExeName}"" /SC ONLOGON /RL LIMITED /DELAY 0000:05 /F"; Flags: runhidden; Tasks: autostart
 ; Avvia l'applicazione dopo l'installazione (opzionale)
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
-[UninstallRun]
-; Rimuovi il task di autostart
-Filename: "schtasks.exe"; Parameters: "/Delete /TN ""MWCFExtractor_Autostart"" /F"; Flags: runhidden
-
 [UninstallDelete]
+; Rimuovi il collegamento dalla cartella Startup
+Type: files; Name: "{userstartup}\MWCFExtractor.lnk"
 ; Rimuovi la cartella di configurazione in AppData
 Type: filesandordirs; Name: "{userappdata}\{#MyAppId}"
 
