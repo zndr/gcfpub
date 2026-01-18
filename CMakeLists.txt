@@ -31,6 +31,7 @@ set(SOURCES
     src/app_icon.cpp
     src/task_scheduler.cpp
     src/install_mode.cpp
+    src/update_checker.cpp
 )
 
 # Header files
@@ -47,6 +48,7 @@ set(HEADERS
     src/app_icon.h
     src/task_scheduler.h
     src/install_mode.h
+    src/update_checker.h
 )
 
 # Resource file
@@ -80,6 +82,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     ole32
     oleaut32
     taskschd
+    winhttp
 )
 
 # Compiler-specific options

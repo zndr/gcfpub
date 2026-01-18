@@ -26,6 +26,7 @@
 #include "overlay.h"
 #include "config.h"
 #include "app_icon.h"
+#include "update_checker.h"
 
 #pragma comment(lib, "shcore.lib")
 
@@ -40,6 +41,7 @@ static config::AppConfig g_config;
 static config::AppConfig g_savedConfig;  // Configurazione salvata su file
 static bool g_hotkeyModified = false;    // true se la hotkey è stata modificata
 static bool g_running = true;
+static bool g_updateCheckSilent = true;  // true se il controllo aggiornamenti è silenzioso
 
 // ============================================================================
 // Forward declarations
@@ -52,6 +54,8 @@ bool tryRegisterHotkey();
 void showConfigDialog();
 void saveHotkey();
 void toggleAutostart();
+void checkForUpdates(bool silent);
+void handleUpdateCheckResult(bool silent);
 void cleanup();
 void enableDpiAwareness();
 
@@ -217,6 +221,9 @@ bool initializeApplication(HINSTANCE hInstance) {
                   g_hotkeyManager->getConfig().toString(),
                   overlay::OverlayType::Success,
                   2000);
+
+    // Controlla aggiornamenti in background (silenzioso)
+    checkForUpdates(true);
 
     return true;
 }
@@ -424,6 +431,62 @@ void toggleAutostart() {
 }
 
 // ============================================================================
+// Check for updates
+// ============================================================================
+
+void checkForUpdates(bool silent) {
+    g_updateCheckSilent = silent;
+
+    if (!silent) {
+        overlay::show(L"Controllo aggiornamenti",
+                      L"Verifica in corso...",
+                      overlay::OverlayType::Success, 1500);
+    }
+
+    // Avvia il controllo in background
+    updatechecker::checkForUpdatesAsync(g_hwndMain, WM_UPDATE_CHECK_DONE);
+}
+
+void handleUpdateCheckResult(bool silent) {
+    updatechecker::UpdateCheckResult result = updatechecker::getLastCheckResult();
+
+    if (!result.success) {
+        // Errore nel controllo
+        if (!silent) {
+            dialogs::showErrorMessage(NULL, L"Errore",
+                (L"Impossibile verificare gli aggiornamenti.\n\n" + result.errorMessage).c_str());
+        }
+        return;
+    }
+
+    if (result.updateAvailable) {
+        // Aggiornamento disponibile
+        std::wstring message = L"E' disponibile una nuova versione!\n\n"
+                               L"Versione corrente: " + result.currentVersion + L"\n"
+                               L"Versione disponibile: " + result.latestVersion + L"\n\n"
+                               L"Vuoi aprire la pagina di download?";
+
+        int response = MessageBoxW(
+            NULL,
+            message.c_str(),
+            L"Aggiornamento disponibile",
+            MB_YESNO | MB_ICONINFORMATION | MB_SETFOREGROUND
+        );
+
+        if (response == IDYES) {
+            updatechecker::openReleasesPage();
+        }
+    } else {
+        // Nessun aggiornamento (mostra solo se non silenzioso)
+        if (!silent) {
+            overlay::show(L"Nessun aggiornamento",
+                          L"Stai usando la versione piu' recente (" + result.currentVersion + L")",
+                          overlay::OverlayType::Success, 3000);
+        }
+    }
+}
+
+// ============================================================================
 // Cleanup
 // ============================================================================
 
@@ -489,6 +552,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                     toggleAutostart();
                     break;
 
+                case IDM_TRAY_CHECK_UPDATES:
+                    checkForUpdates(false);
+                    break;
+
                 case IDM_TRAY_ABOUT:
                     dialogs::showAboutDialog(hwnd);
                     break;
@@ -498,6 +565,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                     PostQuitMessage(0);
                     break;
             }
+            return 0;
+
+        case WM_UPDATE_CHECK_DONE:
+            handleUpdateCheckResult(g_updateCheckSilent);
             return 0;
 
         case WM_CLOSE:

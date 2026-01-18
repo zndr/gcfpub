@@ -26,8 +26,9 @@
 #define IDM_TRAY_SAVE_HOTKEY    2001
 #define IDM_TRAY_CHANGE_HOTKEY  2002
 #define IDM_TRAY_AUTOSTART      2003
-#define IDM_TRAY_ABOUT          2004
-#define IDM_TRAY_EXIT           2005
+#define IDM_TRAY_CHECK_UPDATES  2004
+#define IDM_TRAY_ABOUT          2005
+#define IDM_TRAY_EXIT           2006
 
 // Legacy (per compatibilità)
 #define IDM_TRAY_CONFIGURE  IDM_TRAY_CHANGE_HOTKEY
@@ -40,8 +41,9 @@
 #define HOTKEY_ID           4001
 
 // Custom messages
-#define WM_TRAYICON         (WM_USER + 1)
-#define WM_HOTKEY_CHANGED   (WM_USER + 2)
+#define WM_TRAYICON             (WM_USER + 1)
+#define WM_HOTKEY_CHANGED       (WM_USER + 2)
+#define WM_UPDATE_CHECK_DONE    (WM_USER + 3)
 
 // Timeout values (milliseconds)
 #define MSGBOX_TIMEOUT_MS   3000

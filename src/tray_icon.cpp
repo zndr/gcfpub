@@ -137,6 +137,9 @@ HMENU createTrayMenu(bool hotkeyModified, bool autostartEnabled) {
 
         AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
 
+        // Controlla aggiornamenti
+        AppendMenuW(hMenu, MF_STRING, IDM_TRAY_CHECK_UPDATES, L"Controlla aggiornamenti...");
+
         // Informazioni
         AppendMenuW(hMenu, MF_STRING, IDM_TRAY_ABOUT, L"Informazioni");
 
