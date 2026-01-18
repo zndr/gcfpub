@@ -1,0 +1,41 @@
+# Build directories
+build/
+out/
+cmake-build-*/
+
+# Executables (keep in root for distribution)
+*.exe
+*.dll
+*.lib
+*.exp
+
+# Generated files (keep app.ico for distribution)
+tools/*.exe
+tools/*.obj
+
+# Visual Studio files
+.vs/
+*.vcxproj.user
+*.suo
+*.sdf
+*.opensdf
+*.db
+*.opendb
+
+# CMake generated
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+
+# Object files
+*.obj
+*.o
+
+# Log files
+*.log
+
+# IDE specific
+.idea/
+.vscode/
+*.swp
+*~

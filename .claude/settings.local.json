@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git checkout:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: add installable version with Task Scheduler autostart\n\nImplement installer support using Task Scheduler instead of Registry\nfor automatic startup, bypassing Windows 11 security controls.\n\nNew features:\n- Task Scheduler COM API for autostart \\(LOGON trigger with 5s delay\\)\n- Install mode detection \\(Portable vs Installed\\)\n- Automatic migration from Registry to Task Scheduler\n- Inno Setup installer with Start Menu integration\n- Config stored in %APPDATA% for installed version\n\nNew files:\n- src/task_scheduler.h/.cpp - Task Scheduler 2.0 COM wrapper\n- src/install_mode.h/.cpp - Install mode detection\n- installer/setup.iss - Inno Setup script\n- installer/build_installer.bat - Build automation\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+    ]
+  }
+}
