@@ -41,6 +41,35 @@ bool hasLegacyRegistryAutostart();
  */
 bool removeLegacyRegistryAutostart();
 
+/**
+ * @brief Ottiene l'ultimo codice di errore delle operazioni Task Scheduler.
+ *
+ * @return Codice HRESULT dell'ultimo errore, o S_OK se nessun errore
+ */
+HRESULT getLastError();
+
+/**
+ * @brief Ottiene una descrizione dell'ultimo errore.
+ *
+ * @return Stringa con la descrizione dell'errore
+ */
+std::wstring getLastErrorMessage();
+
+/**
+ * @brief Verifica se esiste il collegamento sul desktop.
+ *
+ * @return true se il collegamento esiste
+ */
+bool hasDesktopShortcut();
+
+/**
+ * @brief Crea o rimuove il collegamento sul desktop.
+ *
+ * @param create true per creare, false per rimuovere
+ * @return true se l'operazione e' riuscita
+ */
+bool setDesktopShortcut(bool create);
+
 } // namespace taskscheduler
 
 #endif // TASK_SCHEDULER_H

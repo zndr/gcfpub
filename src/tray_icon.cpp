@@ -118,7 +118,8 @@ void TrayIcon::showContextMenu(HMENU hMenu, int x, int y) {
     PostMessage(m_hwnd, WM_NULL, 0, 0);
 }
 
-HMENU createTrayMenu(bool hotkeyModified, bool autostartEnabled) {
+HMENU createTrayMenu(bool hotkeyModified, bool autostartEnabled,
+                     bool isPortable, bool hasDesktopIcon) {
     HMENU hMenu = CreatePopupMenu();
 
     if (hMenu) {
@@ -134,6 +135,12 @@ HMENU createTrayMenu(bool hotkeyModified, bool autostartEnabled) {
         // Avvio automatico (checkbox)
         UINT autoFlags = MF_STRING | (autostartEnabled ? MF_CHECKED : MF_UNCHECKED);
         AppendMenuW(hMenu, autoFlags, IDM_TRAY_AUTOSTART, L"Avvio automatico");
+
+        // Collegamento sul desktop (solo versione portabile, checkbox)
+        if (isPortable) {
+            UINT desktopFlags = MF_STRING | (hasDesktopIcon ? MF_CHECKED : MF_UNCHECKED);
+            AppendMenuW(hMenu, desktopFlags, IDM_TRAY_DESKTOP_ICON, L"Collegamento sul desktop");
+        }
 
         AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
 

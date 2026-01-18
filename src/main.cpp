@@ -27,6 +27,8 @@
 #include "config.h"
 #include "app_icon.h"
 #include "update_checker.h"
+#include "task_scheduler.h"
+#include "install_mode.h"
 
 #pragma comment(lib, "shcore.lib")
 
@@ -54,6 +56,7 @@ bool tryRegisterHotkey();
 void showConfigDialog();
 void saveHotkey();
 void toggleAutostart();
+void toggleDesktopShortcut();
 void checkForUpdates(bool silent);
 void handleUpdateCheckResult(bool silent);
 void cleanup();
@@ -425,8 +428,41 @@ void toggleAutostart() {
                           overlay::OverlayType::Warning, 2000);
         }
     } else {
-        dialogs::showErrorMessage(NULL, L"Errore",
-                                  L"Impossibile modificare l'avvio automatico.");
+        // Mostra errore dettagliato
+        std::wstring errorMsg = L"Impossibile modificare l'avvio automatico.\n\n";
+        std::wstring taskError = taskscheduler::getLastErrorMessage();
+        if (!taskError.empty()) {
+            errorMsg += taskError;
+        }
+        dialogs::showErrorMessage(NULL, L"Errore", errorMsg.c_str());
+    }
+}
+
+// ============================================================================
+// Toggle desktop shortcut
+// ============================================================================
+
+void toggleDesktopShortcut() {
+    bool hasShortcut = taskscheduler::hasDesktopShortcut();
+    bool newState = !hasShortcut;
+
+    if (taskscheduler::setDesktopShortcut(newState)) {
+        if (newState) {
+            overlay::show(L"Collegamento desktop",
+                          L"Creato",
+                          overlay::OverlayType::Success, 2000);
+        } else {
+            overlay::show(L"Collegamento desktop",
+                          L"Rimosso",
+                          overlay::OverlayType::Warning, 2000);
+        }
+    } else {
+        std::wstring errorMsg = L"Impossibile modificare il collegamento.\n\n";
+        std::wstring taskError = taskscheduler::getLastErrorMessage();
+        if (!taskError.empty()) {
+            errorMsg += taskError;
+        }
+        dialogs::showErrorMessage(NULL, L"Errore", errorMsg.c_str());
     }
 }
 
@@ -523,7 +559,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                     // Mostra il menu contestuale
                     POINT pt;
                     GetCursorPos(&pt);
-                    HMENU hMenu = trayicon::createTrayMenu(g_hotkeyModified, g_config.autostart);
+                    bool isPortable = (installmode::getMode() == installmode::Mode::Portable);
+                    bool hasDesktopIcon = taskscheduler::hasDesktopShortcut();
+                    HMENU hMenu = trayicon::createTrayMenu(g_hotkeyModified, g_config.autostart,
+                                                           isPortable, hasDesktopIcon);
                     if (hMenu) {
                         g_trayIcon->showContextMenu(hMenu, pt.x, pt.y);
                         DestroyMenu(hMenu);
@@ -550,6 +589,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 
                 case IDM_TRAY_AUTOSTART:
                     toggleAutostart();
+                    break;
+
+                case IDM_TRAY_DESKTOP_ICON:
+                    toggleDesktopShortcut();
                     break;
 
                 case IDM_TRAY_CHECK_UPDATES:

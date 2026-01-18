@@ -107,9 +107,12 @@ private:
  *
  * @param hotkeyModified true se la hotkey è stata modificata (abilita "Salva")
  * @param autostartEnabled true se l'avvio automatico è abilitato
+ * @param isPortable true se è la versione portabile
+ * @param hasDesktopIcon true se esiste già il collegamento sul desktop
  * @return Handle del menu creato (deve essere distrutto dal chiamante)
  */
-HMENU createTrayMenu(bool hotkeyModified = false, bool autostartEnabled = false);
+HMENU createTrayMenu(bool hotkeyModified = false, bool autostartEnabled = false,
+                     bool isPortable = true, bool hasDesktopIcon = false);
 
 } // namespace trayicon
 

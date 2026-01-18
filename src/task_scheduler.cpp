@@ -2,6 +2,7 @@
 #include <comdef.h>
 #include <taskschd.h>
 #include <shlobj.h>
+#include <shlwapi.h>
 
 #pragma comment(lib, "taskschd.lib")
 #pragma comment(lib, "comsupp.lib")
@@ -13,89 +14,156 @@ static const wchar_t* TASK_FOLDER = L"\\";
 static const wchar_t* TASK_AUTHOR = L"MWCFExtractor";
 static const wchar_t* TASK_DESCRIPTION = L"Avvia automaticamente MilleWin CF Extractor al login";
 
+// Variabili per tracciare gli errori
+static HRESULT g_lastError = S_OK;
+static std::wstring g_lastErrorMessage;
+
+static void setError(HRESULT hr, const wchar_t* context) {
+    g_lastError = hr;
+    g_lastErrorMessage = context;
+    g_lastErrorMessage += L" (HRESULT: 0x";
+
+    wchar_t hexBuf[16];
+    swprintf_s(hexBuf, L"%08X", (unsigned int)hr);
+    g_lastErrorMessage += hexBuf;
+    g_lastErrorMessage += L")";
+}
+
 static std::wstring getExePath() {
     wchar_t path[MAX_PATH] = {0};
     GetModuleFileNameW(NULL, path, MAX_PATH);
     return std::wstring(path);
 }
 
+// Ottiene il percorso della cartella Startup dell'utente
+static std::wstring getStartupFolder() {
+    wchar_t path[MAX_PATH] = {0};
+    if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_STARTUP, NULL, 0, path))) {
+        return std::wstring(path);
+    }
+    return L"";
+}
+
+// Ottiene il percorso del collegamento nella cartella Startup
+static std::wstring getStartupShortcutPath() {
+    std::wstring startupFolder = getStartupFolder();
+    if (startupFolder.empty()) {
+        return L"";
+    }
+    return startupFolder + L"\\MWCFExtractor.lnk";
+}
+
 bool isTaskEnabled() {
-    HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+    // Verifica se esiste il collegamento nella cartella Startup
+    std::wstring shortcutPath = getStartupShortcutPath();
+    if (shortcutPath.empty()) {
+        return false;
+    }
+
+    // Verifica se il file esiste
+    DWORD attrs = GetFileAttributesW(shortcutPath.c_str());
+    if (attrs == INVALID_FILE_ATTRIBUTES) {
+        return false;
+    }
+
+    // Il collegamento esiste - verifica che punti all'exe corrente
+    HRESULT hr = CoInitialize(NULL);
     bool needsUninit = SUCCEEDED(hr);
 
-    // Se CoInitialize fallisce con RPC_E_CHANGED_MODE, significa che COM e' gia' inizializzato
-    // in un altro modo, ma possiamo comunque usarlo
+    if (FAILED(hr) && hr != RPC_E_CHANGED_MODE) {
+        return true; // Assume abilitato se non possiamo verificare
+    }
+
+    bool result = false;
+    IShellLinkW* pShellLink = nullptr;
+    IPersistFile* pPersistFile = nullptr;
+
+    do {
+        hr = CoCreateInstance(
+            CLSID_ShellLink,
+            NULL,
+            CLSCTX_INPROC_SERVER,
+            IID_IShellLinkW,
+            (void**)&pShellLink
+        );
+        if (FAILED(hr)) { result = true; break; } // Assume abilitato
+
+        hr = pShellLink->QueryInterface(IID_IPersistFile, (void**)&pPersistFile);
+        if (FAILED(hr)) { result = true; break; }
+
+        hr = pPersistFile->Load(shortcutPath.c_str(), STGM_READ);
+        if (FAILED(hr)) { result = true; break; }
+
+        wchar_t targetPath[MAX_PATH] = {0};
+        hr = pShellLink->GetPath(targetPath, MAX_PATH, NULL, 0);
+        if (SUCCEEDED(hr)) {
+            std::wstring exePath = getExePath();
+            result = (_wcsicmp(targetPath, exePath.c_str()) == 0);
+        } else {
+            result = true; // Assume abilitato
+        }
+
+    } while (false);
+
+    if (pPersistFile) pPersistFile->Release();
+    if (pShellLink) pShellLink->Release();
+
+    if (needsUninit) {
+        CoUninitialize();
+    }
+
+    return result;
+}
+
+// Crea un collegamento (.lnk)
+static bool createShortcut(const std::wstring& shortcutPath, const std::wstring& targetPath) {
+    HRESULT hr = CoInitialize(NULL);
+    bool needsUninit = SUCCEEDED(hr);
+
     if (FAILED(hr) && hr != RPC_E_CHANGED_MODE) {
         return false;
     }
 
     bool result = false;
-    ITaskService* pService = nullptr;
-    ITaskFolder* pFolder = nullptr;
-    IRegisteredTask* pTask = nullptr;
+    IShellLinkW* pShellLink = nullptr;
+    IPersistFile* pPersistFile = nullptr;
 
     do {
-        // Crea il servizio Task Scheduler
+        // Crea l'oggetto ShellLink
         hr = CoCreateInstance(
-            CLSID_TaskScheduler,
-            nullptr,
+            CLSID_ShellLink,
+            NULL,
             CLSCTX_INPROC_SERVER,
-            IID_ITaskService,
-            (void**)&pService
+            IID_IShellLinkW,
+            (void**)&pShellLink
         );
         if (FAILED(hr)) break;
 
-        // Connetti al servizio
-        hr = pService->Connect(_variant_t(), _variant_t(), _variant_t(), _variant_t());
+        // Imposta il percorso del target
+        hr = pShellLink->SetPath(targetPath.c_str());
         if (FAILED(hr)) break;
 
-        // Ottieni la cartella root
-        hr = pService->GetFolder(_bstr_t(TASK_FOLDER), &pFolder);
+        // Imposta la directory di lavoro
+        wchar_t workDir[MAX_PATH] = {0};
+        wcscpy_s(workDir, targetPath.c_str());
+        PathRemoveFileSpecW(workDir);
+        pShellLink->SetWorkingDirectory(workDir);
+
+        // Imposta la descrizione
+        pShellLink->SetDescription(L"MilleWin CF Extractor - Avvio automatico");
+
+        // Ottieni l'interfaccia IPersistFile per salvare
+        hr = pShellLink->QueryInterface(IID_IPersistFile, (void**)&pPersistFile);
         if (FAILED(hr)) break;
 
-        // Prova a ottenere il task
-        hr = pFolder->GetTask(_bstr_t(TASK_NAME), &pTask);
-        if (FAILED(hr)) break;
+        // Salva il collegamento
+        hr = pPersistFile->Save(shortcutPath.c_str(), TRUE);
+        result = SUCCEEDED(hr);
 
-        // Verifica che il task sia abilitato
-        VARIANT_BOOL enabled = VARIANT_FALSE;
-        hr = pTask->get_Enabled(&enabled);
-        if (SUCCEEDED(hr) && enabled == VARIANT_TRUE) {
-            // Verifica che il percorso dell'exe sia corretto
-            ITaskDefinition* pDef = nullptr;
-            hr = pTask->get_Definition(&pDef);
-            if (SUCCEEDED(hr) && pDef) {
-                IActionCollection* pActions = nullptr;
-                hr = pDef->get_Actions(&pActions);
-                if (SUCCEEDED(hr) && pActions) {
-                    IAction* pAction = nullptr;
-                    hr = pActions->get_Item(1, &pAction);
-                    if (SUCCEEDED(hr) && pAction) {
-                        IExecAction* pExecAction = nullptr;
-                        hr = pAction->QueryInterface(IID_IExecAction, (void**)&pExecAction);
-                        if (SUCCEEDED(hr) && pExecAction) {
-                            BSTR path = nullptr;
-                            hr = pExecAction->get_Path(&path);
-                            if (SUCCEEDED(hr) && path) {
-                                std::wstring taskPath(path, SysStringLen(path));
-                                std::wstring exePath = getExePath();
-                                result = (_wcsicmp(taskPath.c_str(), exePath.c_str()) == 0);
-                                SysFreeString(path);
-                            }
-                            pExecAction->Release();
-                        }
-                        pAction->Release();
-                    }
-                    pActions->Release();
-                }
-                pDef->Release();
-            }
-        }
     } while (false);
 
-    if (pTask) pTask->Release();
-    if (pFolder) pFolder->Release();
-    if (pService) pService->Release();
+    if (pPersistFile) pPersistFile->Release();
+    if (pShellLink) pShellLink->Release();
 
     if (needsUninit) {
         CoUninitialize();
@@ -105,165 +173,35 @@ bool isTaskEnabled() {
 }
 
 bool setTaskEnabled(bool enable) {
-    HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
-    bool needsUninit = SUCCEEDED(hr);
+    g_lastError = S_OK;
+    g_lastErrorMessage.clear();
 
-    if (FAILED(hr) && hr != RPC_E_CHANGED_MODE) {
+    std::wstring shortcutPath = getStartupShortcutPath();
+    if (shortcutPath.empty()) {
+        setError(E_FAIL, L"Impossibile ottenere cartella Startup");
         return false;
     }
 
-    bool result = false;
-    ITaskService* pService = nullptr;
-    ITaskFolder* pFolder = nullptr;
-    ITaskDefinition* pTask = nullptr;
-    IRegistrationInfo* pRegInfo = nullptr;
-    IPrincipal* pPrincipal = nullptr;
-    ITaskSettings* pSettings = nullptr;
-    ITriggerCollection* pTriggerCollection = nullptr;
-    ITrigger* pTrigger = nullptr;
-    ILogonTrigger* pLogonTrigger = nullptr;
-    IActionCollection* pActionCollection = nullptr;
-    IAction* pAction = nullptr;
-    IExecAction* pExecAction = nullptr;
-    IRegisteredTask* pRegisteredTask = nullptr;
-
-    do {
-        // Crea il servizio Task Scheduler
-        hr = CoCreateInstance(
-            CLSID_TaskScheduler,
-            nullptr,
-            CLSCTX_INPROC_SERVER,
-            IID_ITaskService,
-            (void**)&pService
-        );
-        if (FAILED(hr)) break;
-
-        // Connetti al servizio
-        hr = pService->Connect(_variant_t(), _variant_t(), _variant_t(), _variant_t());
-        if (FAILED(hr)) break;
-
-        // Ottieni la cartella root
-        hr = pService->GetFolder(_bstr_t(TASK_FOLDER), &pFolder);
-        if (FAILED(hr)) break;
-
-        if (!enable) {
-            // Rimuovi il task esistente
-            hr = pFolder->DeleteTask(_bstr_t(TASK_NAME), 0);
-            // Se il task non esiste, consideriamo comunque successo
-            result = SUCCEEDED(hr) || hr == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
-            break;
-        }
-
-        // Crea una nuova definizione del task
-        hr = pService->NewTask(0, &pTask);
-        if (FAILED(hr)) break;
-
-        // Imposta le informazioni di registrazione
-        hr = pTask->get_RegistrationInfo(&pRegInfo);
-        if (FAILED(hr)) break;
-
-        hr = pRegInfo->put_Author(_bstr_t(TASK_AUTHOR));
-        if (FAILED(hr)) break;
-
-        hr = pRegInfo->put_Description(_bstr_t(TASK_DESCRIPTION));
-        if (FAILED(hr)) break;
-
-        // Imposta il principal (esegui come utente corrente)
-        hr = pTask->get_Principal(&pPrincipal);
-        if (FAILED(hr)) break;
-
-        hr = pPrincipal->put_LogonType(TASK_LOGON_INTERACTIVE_TOKEN);
-        if (FAILED(hr)) break;
-
-        hr = pPrincipal->put_RunLevel(TASK_RUNLEVEL_LUA);  // Non richiede elevazione
-        if (FAILED(hr)) break;
-
-        // Imposta le settings del task
-        hr = pTask->get_Settings(&pSettings);
-        if (FAILED(hr)) break;
-
-        hr = pSettings->put_StartWhenAvailable(VARIANT_TRUE);
-        if (FAILED(hr)) break;
-
-        hr = pSettings->put_DisallowStartIfOnBatteries(VARIANT_FALSE);
-        if (FAILED(hr)) break;
-
-        hr = pSettings->put_StopIfGoingOnBatteries(VARIANT_FALSE);
-        if (FAILED(hr)) break;
-
-        hr = pSettings->put_ExecutionTimeLimit(_bstr_t(L"PT0S"));  // Nessun limite
-        if (FAILED(hr)) break;
-
-        // Crea il trigger di logon
-        hr = pTask->get_Triggers(&pTriggerCollection);
-        if (FAILED(hr)) break;
-
-        hr = pTriggerCollection->Create(TASK_TRIGGER_LOGON, &pTrigger);
-        if (FAILED(hr)) break;
-
-        hr = pTrigger->QueryInterface(IID_ILogonTrigger, (void**)&pLogonTrigger);
-        if (FAILED(hr)) break;
-
-        hr = pLogonTrigger->put_Id(_bstr_t(L"LogonTriggerId"));
-        if (FAILED(hr)) break;
-
-        // Ritardo di 5 secondi dopo il login per dare tempo al sistema
-        hr = pLogonTrigger->put_Delay(_bstr_t(L"PT5S"));
-        if (FAILED(hr)) break;
-
-        // Crea l'azione (esegui l'exe)
-        hr = pTask->get_Actions(&pActionCollection);
-        if (FAILED(hr)) break;
-
-        hr = pActionCollection->Create(TASK_ACTION_EXEC, &pAction);
-        if (FAILED(hr)) break;
-
-        hr = pAction->QueryInterface(IID_IExecAction, (void**)&pExecAction);
-        if (FAILED(hr)) break;
-
+    if (enable) {
+        // Crea il collegamento nella cartella Startup
         std::wstring exePath = getExePath();
-        hr = pExecAction->put_Path(_bstr_t(exePath.c_str()));
-        if (FAILED(hr)) break;
-
-        // Prima elimina il task se esiste gia'
-        pFolder->DeleteTask(_bstr_t(TASK_NAME), 0);
-
-        // Registra il task
-        hr = pFolder->RegisterTaskDefinition(
-            _bstr_t(TASK_NAME),
-            pTask,
-            TASK_CREATE_OR_UPDATE,
-            _variant_t(),
-            _variant_t(),
-            TASK_LOGON_INTERACTIVE_TOKEN,
-            _variant_t(L""),
-            &pRegisteredTask
-        );
-
-        result = SUCCEEDED(hr);
-
-    } while (false);
-
-    // Cleanup
-    if (pRegisteredTask) pRegisteredTask->Release();
-    if (pExecAction) pExecAction->Release();
-    if (pAction) pAction->Release();
-    if (pActionCollection) pActionCollection->Release();
-    if (pLogonTrigger) pLogonTrigger->Release();
-    if (pTrigger) pTrigger->Release();
-    if (pTriggerCollection) pTriggerCollection->Release();
-    if (pSettings) pSettings->Release();
-    if (pPrincipal) pPrincipal->Release();
-    if (pRegInfo) pRegInfo->Release();
-    if (pTask) pTask->Release();
-    if (pFolder) pFolder->Release();
-    if (pService) pService->Release();
-
-    if (needsUninit) {
-        CoUninitialize();
+        if (!createShortcut(shortcutPath, exePath)) {
+            setError(E_FAIL, L"Impossibile creare collegamento in Startup");
+            return false;
+        }
+    } else {
+        // Elimina il collegamento
+        if (!DeleteFileW(shortcutPath.c_str())) {
+            DWORD err = GetLastError();
+            // Se il file non esiste, consideriamo successo
+            if (err != ERROR_FILE_NOT_FOUND) {
+                setError(HRESULT_FROM_WIN32(err), L"Impossibile eliminare collegamento");
+                return false;
+            }
+        }
     }
 
-    return result;
+    return true;
 }
 
 bool hasLegacyRegistryAutostart() {
@@ -308,6 +246,70 @@ bool removeLegacyRegistryAutostart() {
 
     // Se il valore non esiste, consideriamo comunque successo
     return (result == ERROR_SUCCESS || result == ERROR_FILE_NOT_FOUND);
+}
+
+HRESULT getLastError() {
+    return g_lastError;
+}
+
+std::wstring getLastErrorMessage() {
+    return g_lastErrorMessage;
+}
+
+// Ottiene il percorso della cartella Desktop dell'utente
+static std::wstring getDesktopFolder() {
+    wchar_t path[MAX_PATH] = {0};
+    if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_DESKTOPDIRECTORY, NULL, 0, path))) {
+        return std::wstring(path);
+    }
+    return L"";
+}
+
+// Ottiene il percorso del collegamento sul Desktop
+static std::wstring getDesktopShortcutPath() {
+    std::wstring desktopFolder = getDesktopFolder();
+    if (desktopFolder.empty()) {
+        return L"";
+    }
+    return desktopFolder + L"\\MilleWin CF Extractor.lnk";
+}
+
+bool hasDesktopShortcut() {
+    std::wstring shortcutPath = getDesktopShortcutPath();
+    if (shortcutPath.empty()) {
+        return false;
+    }
+    DWORD attrs = GetFileAttributesW(shortcutPath.c_str());
+    return (attrs != INVALID_FILE_ATTRIBUTES);
+}
+
+bool setDesktopShortcut(bool create) {
+    g_lastError = S_OK;
+    g_lastErrorMessage.clear();
+
+    std::wstring shortcutPath = getDesktopShortcutPath();
+    if (shortcutPath.empty()) {
+        setError(E_FAIL, L"Impossibile ottenere cartella Desktop");
+        return false;
+    }
+
+    if (create) {
+        std::wstring exePath = getExePath();
+        if (!createShortcut(shortcutPath, exePath)) {
+            setError(E_FAIL, L"Impossibile creare collegamento sul Desktop");
+            return false;
+        }
+    } else {
+        if (!DeleteFileW(shortcutPath.c_str())) {
+            DWORD err = GetLastError();
+            if (err != ERROR_FILE_NOT_FOUND) {
+                setError(HRESULT_FROM_WIN32(err), L"Impossibile eliminare collegamento");
+                return false;
+            }
+        }
+    }
+
+    return true;
 }
 
 } // namespace taskscheduler

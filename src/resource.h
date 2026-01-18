@@ -26,9 +26,10 @@
 #define IDM_TRAY_SAVE_HOTKEY    2001
 #define IDM_TRAY_CHANGE_HOTKEY  2002
 #define IDM_TRAY_AUTOSTART      2003
-#define IDM_TRAY_CHECK_UPDATES  2004
-#define IDM_TRAY_ABOUT          2005
-#define IDM_TRAY_EXIT           2006
+#define IDM_TRAY_DESKTOP_ICON   2004
+#define IDM_TRAY_CHECK_UPDATES  2005
+#define IDM_TRAY_ABOUT          2006
+#define IDM_TRAY_EXIT           2007
 
 // Legacy (per compatibilità)
 #define IDM_TRAY_CONFIGURE  IDM_TRAY_CHANGE_HOTKEY
