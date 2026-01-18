@@ -30,7 +30,7 @@ PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 ; Icona
-SetupIconFile=..\res\app_icon.ico
+SetupIconFile=..\res\app.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 ; Informazioni versione
 VersionInfoVersion={#MyAppVersion}
