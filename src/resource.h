@@ -1,9 +1,9 @@
-#ifndef RESOURCE_H
+﻿#ifndef RESOURCE_H
 #define RESOURCE_H
 
 // Application info
 #define APP_NAME            L"MilleWin CF Extractor"
-#define APP_VERSION         L"1.2.0"
+#define APP_VERSION         L"1.2.1"
 #define APP_CLASS_NAME      L"MWCFExtractorClass"
 
 // Icon IDs
@@ -31,7 +31,7 @@
 #define IDM_TRAY_ABOUT          2006
 #define IDM_TRAY_EXIT           2007
 
-// Legacy (per compatibilità)
+// Legacy (per compatibilitÃ )
 #define IDM_TRAY_CONFIGURE  IDM_TRAY_CHANGE_HOTKEY
 
 // Timer IDs

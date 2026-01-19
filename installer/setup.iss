@@ -1,4 +1,4 @@
-; ============================================================================
+﻿; ============================================================================
 ; MilleWin CF Extractor - Inno Setup Script
 ; ============================================================================
 ; Questo script crea un installer per MilleWin CF Extractor
@@ -6,7 +6,7 @@
 ; ============================================================================
 
 #define MyAppName "MilleWin CF Extractor"
-#define MyAppVersion "1.2.0"
+#define MyAppVersion "1.2.1"
 #define MyAppPublisher "MWCFExtractor"
 #define MyAppExeName "mwcf_extractor.exe"
 #define MyAppId "MWCFExtractor"

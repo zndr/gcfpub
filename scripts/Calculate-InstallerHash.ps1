@@ -55,9 +55,34 @@ if (-not (Test-Path $portablePath)) {
 
 $results = @{}
 
+# Funzione per calcolare hash usando certutil (fallback per ambienti senza Get-FileHash)
+function Get-SHA256Hash {
+    param([string]$FilePath)
+
+    # Prova prima Get-FileHash
+    try {
+        $hash = (Get-FileHash -Path $FilePath -Algorithm SHA256 -ErrorAction Stop).Hash
+        return $hash
+    } catch {
+        # Fallback a certutil
+        $output = & certutil -hashfile $FilePath SHA256 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            # Estrai l'hash dalla seconda riga dell'output
+            $lines = $output -split "`n"
+            foreach ($line in $lines) {
+                $line = $line.Trim()
+                if ($line -match '^[a-fA-F0-9]{64}$') {
+                    return $line.ToUpper()
+                }
+            }
+        }
+        return ""
+    }
+}
+
 # Calcola hash installer
 if (Test-Path $installerPath) {
-    $installerHash = (Get-FileHash -Path $installerPath -Algorithm SHA256).Hash
+    $installerHash = Get-SHA256Hash -FilePath $installerPath
     $installerSize = (Get-Item $installerPath).Length
     $installerSizeMB = [math]::Round($installerSize / 1MB, 2)
 
@@ -75,7 +100,7 @@ if (Test-Path $installerPath) {
 
 # Calcola hash portable
 if (Test-Path $portablePath) {
-    $portableHash = (Get-FileHash -Path $portablePath -Algorithm SHA256).Hash
+    $portableHash = Get-SHA256Hash -FilePath $portablePath
     $portableSize = (Get-Item $portablePath).Length
     $portableSizeKB = [math]::Round($portableSize / 1KB, 2)
 

@@ -260,8 +260,33 @@ Write-OK "File copiati in releases\v$NewVersion\"
 # ============================================================================
 Write-Step "9/13" "Calcolo hash SHA256..."
 
-$installerHash = (Get-FileHash -Path $destInstaller -Algorithm SHA256).Hash
-$portableHash = (Get-FileHash -Path $portableExe -Algorithm SHA256).Hash
+# Funzione per calcolare hash usando certutil (fallback per ambienti senza Get-FileHash)
+function Get-SHA256Hash {
+    param([string]$FilePath)
+
+    # Prova prima Get-FileHash
+    try {
+        $hash = (Get-FileHash -Path $FilePath -Algorithm SHA256 -ErrorAction Stop).Hash
+        return $hash
+    } catch {
+        # Fallback a certutil
+        $output = & certutil -hashfile $FilePath SHA256 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            # Estrai l'hash dalla seconda riga dell'output
+            $lines = $output -split "`n"
+            foreach ($line in $lines) {
+                $line = $line.Trim()
+                if ($line -match '^[a-fA-F0-9]{64}$') {
+                    return $line.ToUpper()
+                }
+            }
+        }
+        return ""
+    }
+}
+
+$installerHash = Get-SHA256Hash -FilePath $destInstaller
+$portableHash = Get-SHA256Hash -FilePath $portableExe
 $installerSize = (Get-Item $destInstaller).Length
 $portableSize = (Get-Item $portableExe).Length
 

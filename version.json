@@ -1,12 +1,12 @@
 {
-  "Version": "1.2.0",
-  "DownloadUrl": "https://github.com/zndr/gcfpub/releases/download/v1.2.0/MWCFExtractor_Setup_1.2.0.exe",
-  "PortableUrl": "https://github.com/zndr/gcfpub/releases/download/v1.2.0/MWCFExtractor_Portable_1.2.0.exe",
+  "Version": "1.2.1",
+  "DownloadUrl": "https://github.com/zndr/gcfpub/releases/download/v1.2.1/MWCFExtractor_Setup_1.2.1.exe",
+  "PortableUrl": "https://github.com/zndr/gcfpub/releases/download/v1.2.1/MWCFExtractor_Portable_1.2.1.exe",
   "ReleaseDate": "2026-01-19",
-  "InstallerSize": 0,
-  "PortableSize": 0,
-  "InstallerSha256": "",
-  "PortableSha256": "",
-  "ReleaseNotes": "Versione iniziale con supporto per release automatizzate.",
+  "InstallerSize": 2462187,
+  "PortableSize": 636928,
+  "InstallerSha256": "8DBA3615C378035CC4612250E842486C9029BC8DF7D3DB4EDC5BE12BD6A48D77",
+  "PortableSha256": "12360D0639CC7DA2EF58B0525E1F25DC78C930C0C42890EE26EBDB0029E8CB53",
+  "ReleaseNotes": "Test del nuovo sistema di release automatizzato.",
   "MinimumWindowsVersion": "10.0"
 }
