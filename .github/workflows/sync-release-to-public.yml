@@ -1,0 +1,123 @@
+# ============================================================================
+# sync-release-to-public.yml
+# ============================================================================
+# Questo workflow sincronizza automaticamente le release dal repository privato
+# (zndr/gcf) al repository pubblico (zndr/gcfpub).
+#
+# Trigger: Quando viene pubblicata una release nel repo privato
+#
+# Requisiti:
+#   - Secret PUBLIC_REPO_TOKEN: Token GitHub con permessi 'repo' sul repo pubblico
+# ============================================================================
+
+name: Sync Release to Public Repository
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  sync-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      # ========================================
+      # 1. Checkout repository privato
+      # ========================================
+      - name: Checkout private repository
+        uses: actions/checkout@v4
+
+      # ========================================
+      # 2. Estrai informazioni release
+      # ========================================
+      - name: Extract release info
+        id: release_info
+        run: |
+          echo "tag_name=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+          echo "release_name=${{ github.event.release.name }}" >> $GITHUB_OUTPUT
+          echo "release_body<<EOF" >> $GITHUB_OUTPUT
+          echo "${{ github.event.release.body }}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      # ========================================
+      # 3. Download assets dalla release privata
+      # ========================================
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p release_assets
+          gh release download "${{ steps.release_info.outputs.tag_name }}" \
+            --dir release_assets \
+            --pattern "*.exe"
+          ls -la release_assets/
+
+      # ========================================
+      # 4. Crea/Aggiorna release nel repo pubblico
+      # ========================================
+      - name: Create release in public repository
+        env:
+          GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
+        run: |
+          # Elimina release esistente se presente
+          gh release delete "${{ steps.release_info.outputs.tag_name }}" \
+            --repo zndr/gcfpub \
+            --yes 2>/dev/null || true
+
+          # Crea nuova release
+          gh release create "${{ steps.release_info.outputs.tag_name }}" \
+            --repo zndr/gcfpub \
+            --title "${{ steps.release_info.outputs.release_name }}" \
+            --notes "${{ steps.release_info.outputs.release_body }}" \
+            release_assets/*.exe
+
+      # ========================================
+      # 5. Aggiorna version.json nel repo pubblico
+      # ========================================
+      - name: Update version.json in public repository
+        env:
+          GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
+        run: |
+          # Leggi version.json locale
+          if [ -f "version.json" ]; then
+            # Ottieni SHA del file esistente (se presente)
+            EXISTING_SHA=$(gh api repos/zndr/gcfpub/contents/version.json --jq '.sha' 2>/dev/null || echo "")
+
+            # Prepara il contenuto in base64
+            CONTENT=$(cat version.json | base64 -w 0)
+
+            if [ -n "$EXISTING_SHA" ]; then
+              # Aggiorna file esistente
+              gh api repos/zndr/gcfpub/contents/version.json \
+                -X PUT \
+                -f message="chore: Aggiorna version.json per ${{ steps.release_info.outputs.tag_name }}" \
+                -f content="$CONTENT" \
+                -f sha="$EXISTING_SHA"
+            else
+              # Crea nuovo file
+              gh api repos/zndr/gcfpub/contents/version.json \
+                -X PUT \
+                -f message="chore: Aggiungi version.json per ${{ steps.release_info.outputs.tag_name }}" \
+                -f content="$CONTENT"
+            fi
+
+            echo "version.json aggiornato nel repo pubblico"
+          else
+            echo "version.json non trovato, skip"
+          fi
+
+      # ========================================
+      # 6. Riepilogo
+      # ========================================
+      - name: Summary
+        run: |
+          echo "## Release Sync Completed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tag:** ${{ steps.release_info.outputs.tag_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Name:** ${{ steps.release_info.outputs.release_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Links" >> $GITHUB_STEP_SUMMARY
+          echo "- [Private Release](https://github.com/zndr/gcf/releases/tag/${{ steps.release_info.outputs.tag_name }})" >> $GITHUB_STEP_SUMMARY
+          echo "- [Public Release](https://github.com/zndr/gcfpub/releases/tag/${{ steps.release_info.outputs.tag_name }})" >> $GITHUB_STEP_SUMMARY

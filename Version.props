@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ============================================================================
+  Version.props - File centralizzato per il versioning
+  ============================================================================
+  Questo file e' la FONTE UNICA DI VERITA' per la versione dell'applicazione.
+
+  NON MODIFICARE MANUALMENTE - Usa lo script Prepare-Release.ps1
+
+  Uso:
+    .\scripts\Prepare-Release.ps1 -NewVersion "1.3.0"
+  ============================================================================
+-->
+<Project>
+  <PropertyGroup>
+    <!-- Versione principale (Major.Minor.Patch) -->
+    <VersionPrefix>1.2.0</VersionPrefix>
+
+    <!-- Data ultimo rilascio -->
+    <ReleaseDate>2026-01-19</ReleaseDate>
+  </PropertyGroup>
+</Project>

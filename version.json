@@ -1,0 +1,12 @@
+{
+  "Version": "1.2.0",
+  "DownloadUrl": "https://github.com/zndr/gcfpub/releases/download/v1.2.0/MWCFExtractor_Setup_1.2.0.exe",
+  "PortableUrl": "https://github.com/zndr/gcfpub/releases/download/v1.2.0/MWCFExtractor_Portable_1.2.0.exe",
+  "ReleaseDate": "2026-01-19",
+  "InstallerSize": 0,
+  "PortableSize": 0,
+  "InstallerSha256": "",
+  "PortableSha256": "",
+  "ReleaseNotes": "Versione iniziale con supporto per release automatizzate.",
+  "MinimumWindowsVersion": "10.0"
+}
