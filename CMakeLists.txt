@@ -1,5 +1,5 @@
 ﻿cmake_minimum_required(VERSION 3.16)
-project(mwcf_extractor VERSION 1.2.1 LANGUAGES CXX)
+project(mwcf_extractor VERSION 1.3.0 LANGUAGES CXX)
 
 # C++ Standard
 set(CMAKE_CXX_STANDARD 17)

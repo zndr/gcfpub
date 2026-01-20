@@ -1,12 +1,12 @@
-{
-  "Version": "1.2.1",
-  "DownloadUrl": "https://github.com/zndr/gcfpub/releases/download/v1.2.1/MWCFExtractor_Setup_1.2.1.exe",
-  "PortableUrl": "https://github.com/zndr/gcfpub/releases/download/v1.2.1/MWCFExtractor_Portable_1.2.1.exe",
-  "ReleaseDate": "2026-01-19",
-  "InstallerSize": 2462187,
-  "PortableSize": 636928,
-  "InstallerSha256": "8DBA3615C378035CC4612250E842486C9029BC8DF7D3DB4EDC5BE12BD6A48D77",
-  "PortableSha256": "12360D0639CC7DA2EF58B0525E1F25DC78C930C0C42890EE26EBDB0029E8CB53",
-  "ReleaseNotes": "Test del nuovo sistema di release automatizzato.",
-  "MinimumWindowsVersion": "10.0"
+﻿{
+    "DownloadUrl":  "https://github.com/zndr/gcfpub/releases/download/v1.3.0/MWCFExtractor_Setup_1.3.0.exe",
+    "Version":  "1.3.0",
+    "PortableUrl":  "https://github.com/zndr/gcfpub/releases/download/v1.3.0/MWCFExtractor_Portable_1.3.0.exe",
+    "ReleaseDate":  "2026-01-20",
+    "PortableSha256":  "12360D0639CC7DA2EF58B0525E1F25DC78C930C0C42890EE26EBDB0029E8CB53",
+    "PortableSize":  636928,
+    "ReleaseNotes":  "### Novita\n- **Hotkey completamente personalizzabile**: ora e possibile usare qualsiasi combinazione di tasti\n  - Supporto per modificatori multipli (CTRL+ALT, CTRL+SHIFT+ALT, WIN+SHIFT, ecc.)\n  - Supporto per tutti i tasti: lettere A-Z, numeri 0-9, tasti funzione F1-F24, frecce, tasti speciali\n  - Nuova interfaccia di cattura diretta: basta premere la combinazione desiderata\n  - Compatibilita con configurazioni precedenti (formato legacy)\n\n### Miglioramenti\n- Dialog di configurazione hotkey piu intuitivo e compatto",
+    "InstallerSize":  2462181,
+    "InstallerSha256":  "EB8EFF1DA05ECF1288C5B72EC3603C356A7FC1499489F27AE49E570A8ACB98A5",
+    "MinimumWindowsVersion":  "10.0"
 }
