@@ -3,7 +3,7 @@
 
 // Application info
 #define APP_NAME            L"MilleWin CF Extractor"
-#define APP_VERSION         L"1.3.0"
+#define APP_VERSION         L"1.3.1"
 #define APP_CLASS_NAME      L"MWCFExtractorClass"
 
 // Icon IDs
