@@ -13,75 +13,109 @@ namespace dialogs {
 // ============================================================================
 
 static hotkeymanager::HotkeyConfig g_dialogConfig;
+static hotkeymanager::HotkeyConfig g_capturedConfig;
 static std::wstring g_dialogError;
 static bool g_dialogAccepted = false;
+static bool g_hasCapturedHotkey = false;
+static WNDPROC g_originalStaticProc = nullptr;
 
 // ============================================================================
 // Utility functions
 // ============================================================================
 
-static void populateModifierCombo(HWND hCombo, hotkeymanager::Modifier selected) {
-    SendMessage(hCombo, CB_RESETCONTENT, 0, 0);
-
-    int selIdx = 0;
-
-    // CTRL
-    SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"CTRL");
-    SendMessage(hCombo, CB_SETITEMDATA, 0, (LPARAM)hotkeymanager::Modifier::CTRL);
-    if (selected == hotkeymanager::Modifier::CTRL) selIdx = 0;
-
-    // ALT
-    SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"ALT");
-    SendMessage(hCombo, CB_SETITEMDATA, 1, (LPARAM)hotkeymanager::Modifier::ALT);
-    if (selected == hotkeymanager::Modifier::ALT) selIdx = 1;
-
-    // SHIFT
-    SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"SHIFT");
-    SendMessage(hCombo, CB_SETITEMDATA, 2, (LPARAM)hotkeymanager::Modifier::SHIFT);
-    if (selected == hotkeymanager::Modifier::SHIFT) selIdx = 2;
-
-    SendMessage(hCombo, CB_SETCURSEL, selIdx, 0);
-}
-
-static void populateKeyCombo(HWND hCombo, UINT selectedVK) {
-    SendMessage(hCombo, CB_RESETCONTENT, 0, 0);
-
-    int selIdx = 0;
-
-    // Aggiungi i tasti del numpad 0-9
-    for (int i = 0; i <= 9; i++) {
-        wchar_t label[32];
-        swprintf_s(label, L"%d (Num)", i);
-        int idx = (int)SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)label);
-        UINT vk = hotkeymanager::HotkeyManager::getNumpadVK(i);
-        SendMessage(hCombo, CB_SETITEMDATA, idx, (LPARAM)vk);
-
-        if (vk == selectedVK) {
-            selIdx = idx;
-        }
-    }
-
-    SendMessage(hCombo, CB_SETCURSEL, selIdx, 0);
-}
-
 static void updateCurrentLabel(HWND hDlg) {
-    HWND hComboMod = GetDlgItem(hDlg, IDC_COMBO_MODIFIER);
-    HWND hComboKey = GetDlgItem(hDlg, IDC_COMBO_KEY);
+    std::wstring label = g_capturedConfig.toString();
+    SetDlgItemTextW(hDlg, IDC_STATIC_CURRENT, label.c_str());
+}
 
-    int modIdx = (int)SendMessage(hComboMod, CB_GETCURSEL, 0, 0);
-    int keyIdx = (int)SendMessage(hComboKey, CB_GETCURSEL, 0, 0);
+// Ottiene i modificatori attualmente premuti
+static UINT getCurrentModifiers() {
+    UINT modifiers = 0;
+    if (GetKeyState(VK_CONTROL) & 0x8000) modifiers |= MOD_CONTROL;
+    if (GetKeyState(VK_MENU) & 0x8000) modifiers |= MOD_ALT;
+    if (GetKeyState(VK_SHIFT) & 0x8000) modifiers |= MOD_SHIFT;
+    if ((GetKeyState(VK_LWIN) & 0x8000) || (GetKeyState(VK_RWIN) & 0x8000)) modifiers |= MOD_WIN;
+    return modifiers;
+}
 
-    if (modIdx >= 0 && keyIdx >= 0) {
-        hotkeymanager::Modifier mod =
-            (hotkeymanager::Modifier)SendMessage(hComboMod, CB_GETITEMDATA, modIdx, 0);
-        UINT vk = (UINT)SendMessage(hComboKey, CB_GETITEMDATA, keyIdx, 0);
+// Subclass procedure per catturare i tasti
+static LRESULT CALLBACK HotkeyCaptureProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    switch (msg) {
+        case WM_GETDLGCODE:
+            // Richiedi tutti i tasti, inclusi Tab, Enter, ecc.
+            return DLGC_WANTALLKEYS;
 
-        std::wstring label = hotkeymanager::HotkeyManager::getModifierName(mod) +
-                             L" + " +
-                             hotkeymanager::HotkeyManager::getKeyName(vk);
+        case WM_KEYDOWN:
+        case WM_SYSKEYDOWN: {
+            UINT vkCode = (UINT)wParam;
 
-        SetDlgItemTextW(hDlg, IDC_STATIC_CURRENT, label.c_str());
+            // Ignora i tasti modificatori da soli
+            if (hotkeymanager::HotkeyManager::isModifierKey(vkCode)) {
+                // Mostra i modificatori premuti temporaneamente
+                UINT mods = getCurrentModifiers();
+                if (mods != 0) {
+                    std::wstring label = hotkeymanager::HotkeyManager::getModifiersName(mods) + L" + ...";
+                    SetWindowTextW(hwnd, label.c_str());
+                }
+                return 0;
+            }
+
+            // Cattura la combinazione
+            UINT modifiers = getCurrentModifiers();
+
+            // Richiedi almeno un modificatore per la maggior parte dei tasti
+            // (esclusi F1-F24 che possono funzionare da soli)
+            bool isFunctionKey = (vkCode >= VK_F1 && vkCode <= VK_F24);
+            if (modifiers == 0 && !isFunctionKey) {
+                SetWindowTextW(hwnd, L"Usa almeno un modificatore (CTRL, ALT, SHIFT, WIN)");
+                return 0;
+            }
+
+            // Salva la configurazione catturata
+            g_capturedConfig.modifiers = modifiers;
+            g_capturedConfig.vkCode = vkCode;
+            g_hasCapturedHotkey = true;
+
+            // Aggiorna il controllo
+            std::wstring label = g_capturedConfig.toString();
+            SetWindowTextW(hwnd, label.c_str());
+
+            // Aggiorna anche l'etichetta "combinazione attuale"
+            HWND hDlg = GetParent(hwnd);
+            updateCurrentLabel(hDlg);
+
+            // Pulisci eventuali errori
+            SetDlgItemTextW(hDlg, IDC_STATIC_ERROR, L"");
+
+            return 0;
+        }
+
+        case WM_CHAR:
+        case WM_SYSCHAR:
+            // Ignora i caratteri per evitare il beep
+            return 0;
+
+        case WM_SETFOCUS:
+            // Quando riceve il focus, mostra istruzioni
+            if (!g_hasCapturedHotkey) {
+                SetWindowTextW(hwnd, L"Premi la combinazione di tasti...");
+            }
+            break;
+
+        case WM_KILLFOCUS:
+            // Quando perde il focus, ripristina il testo
+            if (!g_hasCapturedHotkey) {
+                SetWindowTextW(hwnd, L"Clicca qui e premi la combinazione");
+            }
+            break;
+
+        case WM_LBUTTONDOWN:
+            // Cattura il focus quando cliccato
+            SetFocus(hwnd);
+            return 0;
     }
+
+    return CallWindowProc(g_originalStaticProc, hwnd, msg, wParam, lParam);
 }
 
 // ============================================================================
@@ -109,12 +143,14 @@ static INT_PTR CALLBACK HotkeyDialogProc(HWND hDlg, UINT message,
             // Porta in primo piano
             SetForegroundWindow(hDlg);
 
-            // Popola le combo
-            HWND hComboMod = GetDlgItem(hDlg, IDC_COMBO_MODIFIER);
-            HWND hComboKey = GetDlgItem(hDlg, IDC_COMBO_KEY);
+            // Inizializza la configurazione catturata con quella corrente
+            g_capturedConfig = g_dialogConfig;
+            g_hasCapturedHotkey = false;
 
-            populateModifierCombo(hComboMod, g_dialogConfig.modifier);
-            populateKeyCombo(hComboKey, g_dialogConfig.vkCode);
+            // Subclass del controllo di cattura
+            HWND hCapture = GetDlgItem(hDlg, IDC_HOTKEY_CAPTURE);
+            g_originalStaticProc = (WNDPROC)SetWindowLongPtr(hCapture, GWLP_WNDPROC,
+                                                              (LONG_PTR)HotkeyCaptureProc);
 
             // Aggiorna etichetta combinazione attuale
             updateCurrentLabel(hDlg);
@@ -124,33 +160,31 @@ static INT_PTR CALLBACK HotkeyDialogProc(HWND hDlg, UINT message,
                 SetDlgItemTextW(hDlg, IDC_STATIC_ERROR, g_dialogError.c_str());
             }
 
-            return TRUE;
+            // Imposta il focus sul controllo di cattura
+            SetFocus(hCapture);
+
+            return FALSE;  // Non impostare il focus di default
         }
 
         case WM_COMMAND: {
             switch (LOWORD(wParam)) {
-                case IDC_COMBO_MODIFIER:
-                case IDC_COMBO_KEY:
-                    if (HIWORD(wParam) == CBN_SELCHANGE) {
-                        updateCurrentLabel(hDlg);
-                    }
-                    break;
-
                 case IDC_BTN_RETRY:
                 case IDOK: {
-                    // Leggi la configurazione selezionata
-                    HWND hComboMod = GetDlgItem(hDlg, IDC_COMBO_MODIFIER);
-                    HWND hComboKey = GetDlgItem(hDlg, IDC_COMBO_KEY);
+                    // Verifica che sia stata catturata una hotkey
+                    if (!g_hasCapturedHotkey) {
+                        SetDlgItemTextW(hDlg, IDC_STATIC_ERROR,
+                                        L"Premi una combinazione di tasti prima di confermare.");
+                        return TRUE;
+                    }
 
-                    int modIdx = (int)SendMessage(hComboMod, CB_GETCURSEL, 0, 0);
-                    int keyIdx = (int)SendMessage(hComboKey, CB_GETCURSEL, 0, 0);
-
-                    g_dialogConfig.modifier =
-                        (hotkeymanager::Modifier)SendMessage(hComboMod, CB_GETITEMDATA, modIdx, 0);
-                    g_dialogConfig.vkCode =
-                        (UINT)SendMessage(hComboKey, CB_GETITEMDATA, keyIdx, 0);
-
+                    // Usa la configurazione catturata
+                    g_dialogConfig = g_capturedConfig;
                     g_dialogAccepted = true;
+
+                    // Ripristina la procedura originale
+                    HWND hCapture = GetDlgItem(hDlg, IDC_HOTKEY_CAPTURE);
+                    SetWindowLongPtr(hCapture, GWLP_WNDPROC, (LONG_PTR)g_originalStaticProc);
+
                     EndDialog(hDlg, IDOK);
                     return TRUE;
                 }
@@ -158,16 +192,27 @@ static INT_PTR CALLBACK HotkeyDialogProc(HWND hDlg, UINT message,
                 case IDC_BTN_CANCEL:
                 case IDCANCEL:
                     g_dialogAccepted = false;
+
+                    // Ripristina la procedura originale
+                    HWND hCapture = GetDlgItem(hDlg, IDC_HOTKEY_CAPTURE);
+                    SetWindowLongPtr(hCapture, GWLP_WNDPROC, (LONG_PTR)g_originalStaticProc);
+
                     EndDialog(hDlg, IDCANCEL);
                     return TRUE;
             }
             break;
         }
 
-        case WM_CLOSE:
+        case WM_CLOSE: {
             g_dialogAccepted = false;
+
+            // Ripristina la procedura originale
+            HWND hCapture = GetDlgItem(hDlg, IDC_HOTKEY_CAPTURE);
+            SetWindowLongPtr(hCapture, GWLP_WNDPROC, (LONG_PTR)g_originalStaticProc);
+
             EndDialog(hDlg, IDCANCEL);
             return TRUE;
+        }
     }
 
     return FALSE;
@@ -181,6 +226,7 @@ HotkeyDialogResult showHotkeyConfigDialog(
     g_dialogConfig = currentConfig;
     g_dialogError = errorMessage;
     g_dialogAccepted = false;
+    g_hasCapturedHotkey = false;
 
     DialogBoxW(GetModuleHandle(NULL),
                MAKEINTRESOURCEW(IDD_HOTKEY_CONFIG),

@@ -15,8 +15,7 @@
 #define IDD_HOTKEY_CONFIG   200
 
 // Control IDs
-#define IDC_COMBO_MODIFIER  1001
-#define IDC_COMBO_KEY       1002
+#define IDC_HOTKEY_CAPTURE  1001
 #define IDC_STATIC_CURRENT  1003
 #define IDC_STATIC_ERROR    1004
 #define IDC_BTN_RETRY       1005

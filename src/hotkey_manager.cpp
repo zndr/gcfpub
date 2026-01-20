@@ -8,13 +8,17 @@ namespace hotkeymanager {
 // ============================================================================
 
 std::wstring HotkeyConfig::toString() const {
-    return HotkeyManager::getModifierName(modifier) + L" + " +
-           HotkeyManager::getKeyName(vkCode);
+    std::wstring result = HotkeyManager::getModifiersName(modifiers);
+    if (!result.empty()) {
+        result += L" + ";
+    }
+    result += HotkeyManager::getKeyName(vkCode);
+    return result;
 }
 
 HotkeyConfig HotkeyConfig::getDefault(int id) {
     HotkeyConfig config;
-    config.modifier = Modifier::CTRL;
+    config.modifiers = MOD_CONTROL;
     config.vkCode = VK_NUMPAD1;
     config.hotkeyId = id;
     return config;
@@ -78,56 +82,130 @@ bool HotkeyManager::setConfig(const HotkeyConfig& config) {
     return true;
 }
 
-std::wstring HotkeyManager::getModifierName(Modifier mod) {
-    switch (mod) {
-        case Modifier::CTRL:
-            return L"CTRL";
-        case Modifier::ALT:
-            return L"ALT";
-        case Modifier::SHIFT:
-            return L"SHIFT";
-        default:
-            return L"???";
+std::wstring HotkeyManager::getModifiersName(UINT modifiers) {
+    std::wstring result;
+
+    if (modifiers & MOD_CONTROL) {
+        result += L"CTRL";
     }
+    if (modifiers & MOD_ALT) {
+        if (!result.empty()) result += L" + ";
+        result += L"ALT";
+    }
+    if (modifiers & MOD_SHIFT) {
+        if (!result.empty()) result += L" + ";
+        result += L"SHIFT";
+    }
+    if (modifiers & MOD_WIN) {
+        if (!result.empty()) result += L" + ";
+        result += L"WIN";
+    }
+
+    return result;
 }
 
 std::wstring HotkeyManager::getKeyName(UINT vkCode) {
-    int digit = getNumpadDigit(vkCode);
-    if (digit >= 0) {
-        return std::to_wstring(digit) + L" (Num)";
-    }
-
-    // Per altri tasti
-    switch (vkCode) {
-        case VK_F1: return L"F1";
-        case VK_F2: return L"F2";
-        case VK_F3: return L"F3";
-        case VK_F4: return L"F4";
-        case VK_F5: return L"F5";
-        case VK_F6: return L"F6";
-        case VK_F7: return L"F7";
-        case VK_F8: return L"F8";
-        case VK_F9: return L"F9";
-        case VK_F10: return L"F10";
-        case VK_F11: return L"F11";
-        case VK_F12: return L"F12";
-        default:
-            return L"???";
-    }
-}
-
-UINT HotkeyManager::getNumpadVK(int digit) {
-    if (digit < 0 || digit > 9) {
-        return 0;
-    }
-    return VK_NUMPAD0 + digit;
-}
-
-int HotkeyManager::getNumpadDigit(UINT vkCode) {
+    // Numpad 0-9
     if (vkCode >= VK_NUMPAD0 && vkCode <= VK_NUMPAD9) {
-        return vkCode - VK_NUMPAD0;
+        return std::to_wstring(vkCode - VK_NUMPAD0) + L" (Num)";
     }
-    return -1;
+
+    // Lettere A-Z
+    if (vkCode >= 'A' && vkCode <= 'Z') {
+        return std::wstring(1, static_cast<wchar_t>(vkCode));
+    }
+
+    // Numeri 0-9
+    if (vkCode >= '0' && vkCode <= '9') {
+        return std::wstring(1, static_cast<wchar_t>(vkCode));
+    }
+
+    // Tasti funzione F1-F24
+    if (vkCode >= VK_F1 && vkCode <= VK_F24) {
+        return L"F" + std::to_wstring(vkCode - VK_F1 + 1);
+    }
+
+    // Altri tasti comuni
+    switch (vkCode) {
+        // Tasti speciali
+        case VK_SPACE: return L"SPACE";
+        case VK_RETURN: return L"ENTER";
+        case VK_TAB: return L"TAB";
+        case VK_ESCAPE: return L"ESC";
+        case VK_BACK: return L"BACKSPACE";
+        case VK_DELETE: return L"DELETE";
+        case VK_INSERT: return L"INSERT";
+        case VK_HOME: return L"HOME";
+        case VK_END: return L"END";
+        case VK_PRIOR: return L"PAGE UP";
+        case VK_NEXT: return L"PAGE DOWN";
+
+        // Frecce
+        case VK_UP: return L"UP";
+        case VK_DOWN: return L"DOWN";
+        case VK_LEFT: return L"LEFT";
+        case VK_RIGHT: return L"RIGHT";
+
+        // Numpad operatori
+        case VK_MULTIPLY: return L"* (Num)";
+        case VK_ADD: return L"+ (Num)";
+        case VK_SUBTRACT: return L"- (Num)";
+        case VK_DECIMAL: return L". (Num)";
+        case VK_DIVIDE: return L"/ (Num)";
+
+        // Punteggiatura
+        case VK_OEM_1: return L";";
+        case VK_OEM_PLUS: return L"=";
+        case VK_OEM_COMMA: return L",";
+        case VK_OEM_MINUS: return L"-";
+        case VK_OEM_PERIOD: return L".";
+        case VK_OEM_2: return L"/";
+        case VK_OEM_3: return L"`";
+        case VK_OEM_4: return L"[";
+        case VK_OEM_5: return L"\\";
+        case VK_OEM_6: return L"]";
+        case VK_OEM_7: return L"'";
+
+        // Altri
+        case VK_PAUSE: return L"PAUSE";
+        case VK_SCROLL: return L"SCROLL LOCK";
+        case VK_NUMLOCK: return L"NUM LOCK";
+        case VK_CAPITAL: return L"CAPS LOCK";
+        case VK_PRINT: return L"PRINT SCREEN";
+        case VK_SNAPSHOT: return L"PRINT SCREEN";
+
+        default:
+            // Usa GetKeyNameText per ottenere il nome dal sistema
+            UINT scanCode = MapVirtualKey(vkCode, MAPVK_VK_TO_VSC);
+            if (scanCode != 0) {
+                wchar_t keyName[64] = {0};
+                int result = GetKeyNameTextW(scanCode << 16, keyName, 64);
+                if (result > 0) {
+                    return std::wstring(keyName);
+                }
+            }
+            // Fallback: mostra il codice VK
+            return L"VK_" + std::to_wstring(vkCode);
+    }
+}
+
+bool HotkeyManager::isModifierKey(UINT vkCode) {
+    switch (vkCode) {
+        case VK_CONTROL:
+        case VK_LCONTROL:
+        case VK_RCONTROL:
+        case VK_MENU:      // ALT
+        case VK_LMENU:
+        case VK_RMENU:
+        case VK_SHIFT:
+        case VK_LSHIFT:
+        case VK_RSHIFT:
+        case VK_LWIN:
+        case VK_RWIN:
+            return true;
+        default:
+            return false;
+    }
 }
 
 } // namespace hotkeymanager

@@ -12,12 +12,12 @@ namespace config {
  * @brief Configurazione dell'applicazione.
  */
 struct AppConfig {
-    hotkeymanager::Modifier hotkeyModifier;
-    UINT hotkeyVK;
+    UINT hotkeyModifiers;  ///< Combinazione di MOD_CONTROL | MOD_ALT | MOD_SHIFT | MOD_WIN
+    UINT hotkeyVK;         ///< Codice del tasto virtuale
     bool autostart;
 
     AppConfig()
-        : hotkeyModifier(hotkeymanager::Modifier::CTRL)
+        : hotkeyModifiers(MOD_CONTROL)
         , hotkeyVK(VK_NUMPAD1)
         , autostart(false)
     {}

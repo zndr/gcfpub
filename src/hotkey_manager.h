@@ -8,27 +8,23 @@
 namespace hotkeymanager {
 
 /**
- * @brief Tipi di modificatori per hotkey.
- */
-enum class Modifier {
-    CTRL = MOD_CONTROL,
-    ALT = MOD_ALT,
-    SHIFT = MOD_SHIFT
-};
-
-/**
  * @brief Configurazione di una hotkey.
+ *
+ * Supporta qualsiasi combinazione di modificatori (CTRL, ALT, SHIFT, WIN)
+ * e qualsiasi tasto virtuale.
  */
 struct HotkeyConfig {
-    Modifier modifier;  ///< Modificatore (CTRL, ALT, SHIFT)
+    UINT modifiers;     ///< Combinazione di modificatori (MOD_CONTROL | MOD_ALT | MOD_SHIFT | MOD_WIN)
     UINT vkCode;        ///< Codice del tasto virtuale
     int hotkeyId;       ///< ID univoco per la registrazione
+
+    HotkeyConfig() : modifiers(MOD_CONTROL), vkCode(VK_NUMPAD1), hotkeyId(0) {}
 
     /**
      * @brief Ottiene il codice del modificatore per RegisterHotKey.
      */
     UINT getModifierCode() const {
-        return static_cast<UINT>(modifier) | MOD_NOREPEAT;
+        return modifiers | MOD_NOREPEAT;
     }
 
     /**
@@ -90,12 +86,12 @@ public:
     const HotkeyConfig& getConfig() const { return m_config; }
 
     /**
-     * @brief Ottiene il nome del modificatore.
+     * @brief Ottiene il nome dei modificatori.
      *
-     * @param mod Il modificatore
-     * @return Nome leggibile del modificatore
+     * @param modifiers Combinazione di flag MOD_*
+     * @return Nome leggibile dei modificatori (es. "CTRL + ALT")
      */
-    static std::wstring getModifierName(Modifier mod);
+    static std::wstring getModifiersName(UINT modifiers);
 
     /**
      * @brief Ottiene il nome del tasto.
@@ -106,20 +102,12 @@ public:
     static std::wstring getKeyName(UINT vkCode);
 
     /**
-     * @brief Ottiene il codice VK per un tasto del numpad (0-9).
-     *
-     * @param digit Cifra (0-9)
-     * @return Codice VK corrispondente, o 0 se non valido
-     */
-    static UINT getNumpadVK(int digit);
-
-    /**
-     * @brief Ottiene la cifra da un codice VK del numpad.
+     * @brief Verifica se un tasto virtuale e' un modificatore.
      *
      * @param vkCode Codice del tasto virtuale
-     * @return Cifra (0-9), o -1 se non è un tasto numpad
+     * @return true se il tasto e' CTRL, ALT, SHIFT o WIN
      */
-    static int getNumpadDigit(UINT vkCode);
+    static bool isModifierKey(UINT vkCode);
 
 private:
     HWND m_hwnd;

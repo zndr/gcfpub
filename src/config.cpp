@@ -25,21 +25,35 @@ std::wstring getConfigPath() {
     return installmode::getConfigFilePath();
 }
 
-static hotkeymanager::Modifier stringToModifier(const std::wstring& str) {
-    if (str == L"ALT") return hotkeymanager::Modifier::ALT;
-    if (str == L"SHIFT") return hotkeymanager::Modifier::SHIFT;
-    return hotkeymanager::Modifier::CTRL;  // Default
-}
-
-static std::wstring modifierToString(hotkeymanager::Modifier mod) {
-    switch (mod) {
-        case hotkeymanager::Modifier::ALT: return L"ALT";
-        case hotkeymanager::Modifier::SHIFT: return L"SHIFT";
-        default: return L"CTRL";
+// Converte una stringa di modificatori in flag MOD_*
+// Supporta formato legacy ("CTRL", "ALT", "SHIFT") e nuovo formato numerico
+static UINT stringToModifiers(const std::wstring& str) {
+    // Prova prima il formato numerico
+    if (!str.empty() && str[0] >= L'0' && str[0] <= L'9') {
+        return static_cast<UINT>(_wtoi(str.c_str()));
     }
+
+    // Formato legacy (singolo modificatore)
+    if (str == L"ALT") return MOD_ALT;
+    if (str == L"SHIFT") return MOD_SHIFT;
+    if (str == L"WIN") return MOD_WIN;
+    return MOD_CONTROL;  // Default
 }
 
+// Converte i flag MOD_* in stringa (formato numerico)
+static std::wstring modifiersToString(UINT modifiers) {
+    return std::to_wstring(modifiers);
+}
+
+// Converte una stringa VK in codice
+// Supporta formato legacy ("NUMPADx") e nuovo formato numerico
 static UINT stringToVK(const std::wstring& str) {
+    // Prova prima il formato numerico
+    if (!str.empty() && str[0] >= L'0' && str[0] <= L'9') {
+        return static_cast<UINT>(_wtoi(str.c_str()));
+    }
+
+    // Formato legacy (NUMPAD0-9)
     if (str.length() >= 7 && str.substr(0, 6) == L"NUMPAD") {
         int digit = str[6] - L'0';
         if (digit >= 0 && digit <= 9) {
@@ -49,11 +63,9 @@ static UINT stringToVK(const std::wstring& str) {
     return VK_NUMPAD1;  // Default
 }
 
+// Converte il codice VK in stringa (formato numerico)
 static std::wstring vkToString(UINT vk) {
-    if (vk >= VK_NUMPAD0 && vk <= VK_NUMPAD9) {
-        return L"NUMPAD" + std::to_wstring(vk - VK_NUMPAD0);
-    }
-    return L"NUMPAD1";  // Default
+    return std::to_wstring(vk);
 }
 
 AppConfig load() {
@@ -67,12 +79,12 @@ AppConfig load() {
 
     wchar_t buffer[64] = {0};
 
-    // Leggi modificatore
+    // Leggi modificatori (supporta formato legacy e nuovo)
     GetPrivateProfileStringW(SECTION_HOTKEY, L"Modifier", L"CTRL",
                              buffer, 64, path.c_str());
-    cfg.hotkeyModifier = stringToModifier(buffer);
+    cfg.hotkeyModifiers = stringToModifiers(buffer);
 
-    // Leggi tasto
+    // Leggi tasto (supporta formato legacy e nuovo)
     GetPrivateProfileStringW(SECTION_HOTKEY, L"Key", L"NUMPAD1",
                              buffer, 64, path.c_str());
     cfg.hotkeyVK = stringToVK(buffer);
@@ -86,14 +98,14 @@ AppConfig load() {
 bool save(const AppConfig& cfg) {
     std::wstring path = getConfigPath();
 
-    // Scrivi modificatore
-    std::wstring modStr = modifierToString(cfg.hotkeyModifier);
+    // Scrivi modificatori (formato numerico)
+    std::wstring modStr = modifiersToString(cfg.hotkeyModifiers);
     if (!WritePrivateProfileStringW(SECTION_HOTKEY, L"Modifier",
                                     modStr.c_str(), path.c_str())) {
         return false;
     }
 
-    // Scrivi tasto
+    // Scrivi tasto (formato numerico)
     std::wstring keyStr = vkToString(cfg.hotkeyVK);
     if (!WritePrivateProfileStringW(SECTION_HOTKEY, L"Key",
                                     keyStr.c_str(), path.c_str())) {

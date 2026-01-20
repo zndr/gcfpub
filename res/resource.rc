@@ -35,29 +35,22 @@ END
 IDI_APP_ICON ICON "app.ico"
 
 // Hotkey configuration dialog
-IDD_HOTKEY_CONFIG DIALOGEX 0, 0, 280, 160
+IDD_HOTKEY_CONFIG DIALOGEX 0, 0, 280, 140
 STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Configura Tasto Rapido"
 FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
-    LTEXT           "La combinazione di tasti non e' disponibile.",
+    LTEXT           "Premi la combinazione di tasti desiderata:",
                     -1, 14, 14, 252, 12
-    LTEXT           "Seleziona una nuova combinazione:",
-                    -1, 14, 32, 252, 12
 
-    LTEXT           "Modificatore:", -1, 14, 54, 60, 12
-    COMBOBOX        IDC_COMBO_MODIFIER, 80, 52, 80, 80,
-                    CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Clicca qui e premi la combinazione", IDC_HOTKEY_CAPTURE,
+                    14, 34, 252, 24, SS_CENTER | SS_CENTERIMAGE | SS_SUNKEN | WS_TABSTOP
 
-    LTEXT           "Tasto:", -1, 14, 78, 60, 12
-    COMBOBOX        IDC_COMBO_KEY, 80, 76, 80, 120,
-                    CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Combinazione attuale:", -1, 14, 70, 80, 12
+    LTEXT           "CTRL + 1 (Num)", IDC_STATIC_CURRENT, 100, 70, 166, 12
 
-    LTEXT           "Combinazione attuale:", -1, 14, 102, 80, 12
-    LTEXT           "CTRL + 1 (Num)", IDC_STATIC_CURRENT, 100, 102, 166, 12
+    LTEXT           "", IDC_STATIC_ERROR, 14, 90, 252, 12
 
-    LTEXT           "", IDC_STATIC_ERROR, 14, 120, 252, 12
-
-    PUSHBUTTON      "Riprova", IDC_BTN_RETRY, 110, 138, 75, 18
-    PUSHBUTTON      "Annulla", IDC_BTN_CANCEL, 191, 138, 75, 18
+    PUSHBUTTON      "OK", IDC_BTN_RETRY, 110, 112, 75, 18
+    PUSHBUTTON      "Annulla", IDC_BTN_CANCEL, 191, 112, 75, 18
 END

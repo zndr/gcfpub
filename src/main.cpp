@@ -200,7 +200,7 @@ bool initializeApplication(HINSTANCE hInstance) {
     g_hotkeyManager = std::make_unique<hotkeymanager::HotkeyManager>(g_hwndMain);
 
     hotkeymanager::HotkeyConfig hkConfig;
-    hkConfig.modifier = g_config.hotkeyModifier;
+    hkConfig.modifiers = g_config.hotkeyModifiers;
     hkConfig.vkCode = g_config.hotkeyVK;
     hkConfig.hotkeyId = HOTKEY_ID;
     g_hotkeyManager->setConfig(hkConfig);
@@ -265,11 +265,11 @@ bool tryRegisterHotkey() {
 
         if (g_hotkeyManager->setConfig(newConfig) && g_hotkeyManager->registerHotkey()) {
             // Aggiorna configurazione
-            g_config.hotkeyModifier = newConfig.modifier;
+            g_config.hotkeyModifiers = newConfig.modifiers;
             g_config.hotkeyVK = newConfig.vkCode;
 
             // Verifica se è diversa da quella salvata
-            g_hotkeyModified = (g_config.hotkeyModifier != g_savedConfig.hotkeyModifier ||
+            g_hotkeyModified = (g_config.hotkeyModifiers != g_savedConfig.hotkeyModifiers ||
                                 g_config.hotkeyVK != g_savedConfig.hotkeyVK);
             return true;
         }
@@ -360,11 +360,11 @@ void showConfigDialog() {
 
         if (g_hotkeyManager->setConfig(newConfig) && g_hotkeyManager->registerHotkey()) {
             // Aggiorna configurazione
-            g_config.hotkeyModifier = newConfig.modifier;
+            g_config.hotkeyModifiers = newConfig.modifiers;
             g_config.hotkeyVK = newConfig.vkCode;
 
             // Verifica se è diversa da quella salvata
-            g_hotkeyModified = (g_config.hotkeyModifier != g_savedConfig.hotkeyModifier ||
+            g_hotkeyModified = (g_config.hotkeyModifiers != g_savedConfig.hotkeyModifiers ||
                                 g_config.hotkeyVK != g_savedConfig.hotkeyVK);
 
             // Aggiorna il tooltip
@@ -393,7 +393,7 @@ void showConfigDialog() {
 // ============================================================================
 
 void saveHotkey() {
-    g_savedConfig.hotkeyModifier = g_config.hotkeyModifier;
+    g_savedConfig.hotkeyModifiers = g_config.hotkeyModifiers;
     g_savedConfig.hotkeyVK = g_config.hotkeyVK;
 
     if (config::save(g_config)) {
