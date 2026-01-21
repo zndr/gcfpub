@@ -6,7 +6,7 @@
 ; ============================================================================
 
 #define MyAppName "MilleWin CF Extractor"
-#define MyAppVersion "1.3.5"
+#define MyAppVersion "1.3.6"
 #define MyAppPublisher "MWCFExtractor"
 #define MyAppExeName "mwcf_extractor.exe"
 #define MyAppId "MWCFExtractor"
@@ -187,16 +187,21 @@ end;
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   ResultCode: Integer;
+  WinDir: String;
 begin
   Result := '';
 
-  // Se l'applicazione e' in esecuzione, chiudila automaticamente
-  if IsAppRunning() then
-  begin
-    // Termina il processo automaticamente senza chiedere
-    Exec('taskkill.exe', '/F /IM {#MyAppExeName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-    Sleep(1000); // Attendi un secondo per assicurarsi che il processo sia terminato
-  end;
+  // Termina sempre il processo se esiste (non verificare prima, termina direttamente)
+  // Usa PowerShell che e' piu' affidabile di taskkill
+  WinDir := ExpandConstant('{sys}');
+  Exec(WinDir + '\WindowsPowerShell\v1.0\powershell.exe',
+       '-NoProfile -ExecutionPolicy Bypass -Command "Stop-Process -Name ''mwcf_extractor'' -Force -ErrorAction SilentlyContinue"',
+       '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Sleep(500);
+
+  // Secondo tentativo con taskkill come fallback
+  Exec(WinDir + '\taskkill.exe', '/F /IM {#MyAppExeName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Sleep(500);
 end;
 
 // Funzione chiamata prima della disinstallazione
