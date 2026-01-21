@@ -24,9 +24,22 @@ TrayIcon::~TrayIcon() {
 }
 
 HICON TrayIcon::loadIconForState(TrayIconState state) {
-    // Usa l'icona generata programmaticamente
-    bool isActive = (state == TrayIconState::Active);
-    return appicon::createTrayIcon(16, isActive);
+    // Prima prova a caricare l'icona dalla risorsa (più affidabile)
+    HICON hIcon = (HICON)LoadImageW(
+        GetModuleHandle(NULL),
+        MAKEINTRESOURCEW(IDI_APP_ICON),
+        IMAGE_ICON,
+        16, 16,  // Dimensione per system tray
+        LR_DEFAULTCOLOR
+    );
+
+    // Se fallisce, genera l'icona programmaticamente
+    if (!hIcon) {
+        bool isActive = (state == TrayIconState::Active);
+        hIcon = appicon::createTrayIcon(16, isActive);
+    }
+
+    return hIcon;
 }
 
 bool TrayIcon::create(const std::wstring& tooltip) {
