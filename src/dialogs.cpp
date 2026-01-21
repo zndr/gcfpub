@@ -302,10 +302,9 @@ void showAboutDialog(HWND hwndParent) {
     (void)hwndParent;
     std::wstring message =
         L"MilleWin CF Extractor\n"
-        L"Versione 1.0.0\n\n"
+        L"Versione " APP_VERSION L"\n\n"
         L"Estrae il codice fiscale dalla finestra di MilleWin\n"
-        L"e lo copia negli appunti.\n\n"
-        L"Applicazione portabile - nessuna installazione richiesta.";
+        L"e lo copia negli appunti.";
 
     MessageBoxW(NULL, message.c_str(), L"Informazioni",
                 MB_OK | MB_ICONINFORMATION | MB_SETFOREGROUND | MB_SYSTEMMODAL);

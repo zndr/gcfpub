@@ -6,7 +6,7 @@
 ; ============================================================================
 
 #define MyAppName "MilleWin CF Extractor"
-#define MyAppVersion "1.3.9"
+#define MyAppVersion "1.3.10"
 #define MyAppPublisher "MWCFExtractor"
 #define MyAppExeName "mwcf_extractor.exe"
 #define MyAppId "MWCFExtractor"
@@ -43,7 +43,7 @@ DisableDirPage=auto
 WizardStyle=modern
 ; Chiudi automaticamente l'applicazione se in esecuzione
 CloseApplications=force
-CloseApplicationsFilter=*.exe
+CloseApplicationsFilter=mwcf_extractor.exe
 
 [Languages]
 Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"
@@ -89,6 +89,74 @@ Type: filesandordirs; Name: "{userappdata}\{#MyAppId}"
 // Import MessageBox da user32.dll per titolo personalizzato
 function MessageBoxW(hWnd: Integer; lpText, lpCaption: String; uType: Cardinal): Integer;
 external 'MessageBoxW@user32.dll stdcall';
+
+// Funzione per verificare se l'applicazione e' in esecuzione
+function IsAppRunning(): Boolean;
+var
+  ResultCode: Integer;
+begin
+  Result := False;
+  if Exec('cmd.exe', '/c tasklist /FI "IMAGENAME eq {#MyAppExeName}" 2>nul | find /I "{#MyAppExeName}" >nul',
+          '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+  begin
+    Result := (ResultCode = 0);
+  end;
+end;
+
+// Funzione per terminare l'applicazione con retry e verifica
+// Ritorna True se l'app e' stata terminata o non era in esecuzione
+function KillAppWithRetry(MaxAttempts: Integer; ShowError: Boolean): Boolean;
+var
+  ResultCode: Integer;
+  Attempts: Integer;
+begin
+  Result := True;
+  Attempts := 0;
+
+  while IsAppRunning() and (Attempts < MaxAttempts) do
+  begin
+    Attempts := Attempts + 1;
+    Log('KillAppWithRetry: Tentativo ' + IntToStr(Attempts) + ' di ' + IntToStr(MaxAttempts));
+
+    if Attempts = 1 then
+    begin
+      // Primo tentativo: chiusura graceful (senza /F)
+      Exec('taskkill.exe', '/IM {#MyAppExeName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+      Log('KillAppWithRetry: taskkill graceful, ResultCode=' + IntToStr(ResultCode));
+      Sleep(1500);
+    end
+    else
+    begin
+      // Tentativi successivi: forza chiusura con /F e /T (termina processi figli)
+      Exec('taskkill.exe', '/F /T /IM {#MyAppExeName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+      Log('KillAppWithRetry: taskkill /F /T, ResultCode=' + IntToStr(ResultCode));
+      Sleep(1000);
+    end;
+  end;
+
+  // Verifica finale
+  if IsAppRunning() then
+  begin
+    Result := False;
+    Log('KillAppWithRetry: FALLITO - processo ancora in esecuzione dopo ' + IntToStr(Attempts) + ' tentativi');
+
+    if ShowError then
+    begin
+      MessageBoxW(0,
+        'Non e'' stato possibile chiudere automaticamente MilleWin CF Extractor.' + #13#10 + #13#10 +
+        'Questo puo'' accadere se:' + #13#10 +
+        '- L''applicazione e'' stata avviata con privilegi elevati' + #13#10 +
+        '- Un antivirus sta proteggendo il processo' + #13#10 + #13#10 +
+        'Chiudi manualmente l''applicazione dalla system tray e riprova.',
+        'Impossibile chiudere l''applicazione',
+        $10); // MB_ICONERROR
+    end;
+  end
+  else
+  begin
+    Log('KillAppWithRetry: OK - processo terminato dopo ' + IntToStr(Attempts) + ' tentativi');
+  end;
+end;
 
 // Funzione per verificare se Millewin e' installato nel sistema
 function IsMillewinInstalled(): Boolean;
@@ -154,19 +222,19 @@ end;
 
 // Funzione chiamata all'avvio dell'installazione
 function InitializeSetup(): Boolean;
-var
-  ResultCode: Integer;
 begin
   Result := True;
 
-  // PRIMA DI TUTTO: termina l'applicazione se in esecuzione (metodo originale v1.3.2)
-  Exec('taskkill.exe', '/F /IM {#MyAppExeName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  Sleep(1000);
+  // PRIMA DI TUTTO: termina l'applicazione se in esecuzione
+  // Usa 3 tentativi, non mostrare errore qui (lo faremo in PrepareToInstall se necessario)
+  if not KillAppWithRetry(3, False) then
+  begin
+    Log('InitializeSetup: Prima terminazione fallita, riprovera'' in PrepareToInstall');
+  end;
 
   // Verifica che Millewin sia installato
   if not IsMillewinInstalled() then
   begin
-    // MB_OK = 0, MB_ICONERROR = $10
     MessageBoxW(0,
       'MWCF-Extractor e'' utilizzabile solo se Millewin e'' installato nel sistema.',
       'Millewin non trovato',
@@ -175,51 +243,41 @@ begin
   end;
 end;
 
-// Funzione per verificare se l'applicazione e' in esecuzione
-function IsAppRunning(): Boolean;
-var
-  ResultCode: Integer;
-begin
-  Result := False;
-  // Usa tasklist per verificare se il processo e' in esecuzione
-  if Exec('cmd.exe', '/c tasklist /FI "IMAGENAME eq {#MyAppExeName}" | find /I "{#MyAppExeName}"',
-          '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
-  begin
-    Result := (ResultCode = 0);
-  end;
-end;
-
 // Funzione chiamata prima dell'installazione
 function PrepareToInstall(var NeedsRestart: Boolean): String;
-var
-  ResultCode: Integer;
 begin
   Result := '';
 
-  // Secondo tentativo di terminazione (il primo e' in InitializeSetup)
-  Exec('taskkill.exe', '/F /IM {#MyAppExeName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  Sleep(500);
+  // Secondo tentativo di terminazione con feedback utente se fallisce
+  if IsAppRunning() then
+  begin
+    Log('PrepareToInstall: App ancora in esecuzione, tentativo finale');
+    if not KillAppWithRetry(3, True) then
+    begin
+      // L'utente e' stato avvisato, blocca l'installazione
+      Result := 'Chiudi MilleWin CF Extractor dalla system tray prima di procedere.';
+    end;
+  end;
 end;
 
 // Funzione chiamata prima della disinstallazione
 function InitializeUninstall(): Boolean;
-var
-  ResultCode: Integer;
 begin
   Result := True;
 
   // Se l'applicazione e' in esecuzione, terminala
   if IsAppRunning() then
   begin
-    Exec('taskkill.exe', '/F /IM {#MyAppExeName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-    Sleep(1000);
+    if not KillAppWithRetry(3, True) then
+    begin
+      // L'utente e' stato avvisato, blocca la disinstallazione
+      Result := False;
+    end;
   end;
 end;
 
 // Pulisci la voce legacy dal Registry durante l'installazione
 procedure CurStepChanged(CurStep: TSetupStep);
-var
-  ResultCode: Integer;
 begin
   if CurStep = ssPostInstall then
   begin

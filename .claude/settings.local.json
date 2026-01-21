@@ -33,7 +33,12 @@
       "Bash(\"/c/Program Files \\(x86\\)/Inno Setup 6/ISCC.exe\" //Q \"D:\\\\Claude\\\\gcf\\\\installer\\\\setup.iss\")",
       "Bash(gh release delete:*)",
       "Bash(gh release create:*)",
-      "Bash(git tag:*)"
+      "Bash(git tag:*)",
+      "Bash(cmd //c \"E:\\\\Claude\\\\gcf\\\\build_all.bat\")",
+      "Bash(cmd //c \"del E:\\\\Claude\\\\gcf\\\\build_all.bat E:\\\\Claude\\\\gcf\\\\compile_installer.bat 2>nul\")",
+      "Bash(cmd //c \"del E:\\\\Claude\\\\gcf\\\\build_all.bat 2>nul\")",
+      "Bash(cmd //c \"cd /d E:\\\\Claude\\\\gcf && release.bat 1.3.10\")",
+      "Bash(cmd //c \"E:\\\\Claude\\\\gcf\\\\release.bat 1.3.10\")"
     ]
   }
 }
