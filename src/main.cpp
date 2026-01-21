@@ -116,6 +116,19 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
         return 0;
     }
 
+    // In modalità portabile, verifica che Millewin sia installato
+    if (installmode::getMode() == installmode::Mode::Portable) {
+        if (!windowfinder::isMillewinInstalled()) {
+            MessageBoxW(NULL,
+                L"MWCF-Extractor e' utilizzabile solo se Millewin e' installato nel sistema.",
+                L"Millewin non trovato",
+                MB_OK | MB_ICONERROR | MB_SETFOREGROUND);
+            ReleaseMutex(hMutex);
+            CloseHandle(hMutex);
+            return 1;
+        }
+    }
+
     // Inizializza l'applicazione
     if (!initializeApplication(hInstance)) {
         MessageBoxW(NULL, L"Errore durante l'inizializzazione dell'applicazione.",

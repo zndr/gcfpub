@@ -230,4 +230,40 @@ std::optional<WindowInfo> findMainMilleWinWindow() {
     return windows[0];
 }
 
+bool isMillewinInstalled() {
+    // Metodo 1: Cerca nel Registry le chiavi di installazione di MilleWin
+    // MilleWin è prodotto da Millennium e crea chiavi sotto HKLM\SOFTWARE\Millennium
+    const wchar_t* registryPaths[] = {
+        L"SOFTWARE\\WOW6432Node\\Millennium\\Millewin",
+        L"SOFTWARE\\Millennium\\Millewin",
+        L"SOFTWARE\\WOW6432Node\\Dedalus\\Millewin",
+        L"SOFTWARE\\Dedalus\\Millewin"
+    };
+
+    HKEY hKey;
+    for (const auto& path : registryPaths) {
+        if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, path, 0, KEY_READ, &hKey) == ERROR_SUCCESS) {
+            RegCloseKey(hKey);
+            return true;
+        }
+    }
+
+    // Metodo 2: Cerca l'eseguibile in percorsi comuni
+    const wchar_t* commonPaths[] = {
+        L"C:\\Millewin\\millewin.exe",
+        L"C:\\Program Files\\Millewin\\millewin.exe",
+        L"C:\\Program Files (x86)\\Millewin\\millewin.exe",
+        L"C:\\Programmi\\Millewin\\millewin.exe"
+    };
+
+    for (const auto& exePath : commonPaths) {
+        DWORD attrs = GetFileAttributesW(exePath);
+        if (attrs != INVALID_FILE_ATTRIBUTES && !(attrs & FILE_ATTRIBUTE_DIRECTORY)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 } // namespace windowfinder

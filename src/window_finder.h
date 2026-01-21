@@ -65,6 +65,16 @@ std::wstring getWindowTitle(HWND hwnd);
  */
 std::wstring getWindowClassName(HWND hwnd);
 
+/**
+ * @brief Verifica se MilleWin è installato nel sistema.
+ *
+ * Cerca nel Registry le chiavi di installazione di MilleWin
+ * e verifica l'esistenza dell'eseguibile.
+ *
+ * @return true se MilleWin è installato nel sistema
+ */
+bool isMillewinInstalled();
+
 } // namespace windowfinder
 
 #endif // WINDOW_FINDER_H

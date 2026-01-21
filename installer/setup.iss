@@ -6,7 +6,7 @@
 ; ============================================================================
 
 #define MyAppName "MilleWin CF Extractor"
-#define MyAppVersion "1.3.1"
+#define MyAppVersion "1.3.2"
 #define MyAppPublisher "MWCFExtractor"
 #define MyAppExeName "mwcf_extractor.exe"
 #define MyAppId "MWCFExtractor"
@@ -83,6 +83,89 @@ Type: files; Name: "{userstartup}\MWCFExtractor.lnk"
 Type: filesandordirs; Name: "{userappdata}\{#MyAppId}"
 
 [Code]
+// Import MessageBox da user32.dll per titolo personalizzato
+function MessageBoxW(hWnd: Integer; lpText, lpCaption: String; uType: Cardinal): Integer;
+external 'MessageBoxW@user32.dll stdcall';
+
+// Funzione per verificare se Millewin e' installato nel sistema
+function IsMillewinInstalled(): Boolean;
+var
+  KeyExists: Boolean;
+begin
+  Result := False;
+
+  // Cerca nel Registry le chiavi di installazione di Millewin
+  KeyExists := RegKeyExists(HKEY_LOCAL_MACHINE, 'SOFTWARE\WOW6432Node\Millennium\Millewin');
+  if KeyExists then
+  begin
+    Result := True;
+    Exit;
+  end;
+
+  KeyExists := RegKeyExists(HKEY_LOCAL_MACHINE, 'SOFTWARE\Millennium\Millewin');
+  if KeyExists then
+  begin
+    Result := True;
+    Exit;
+  end;
+
+  KeyExists := RegKeyExists(HKEY_LOCAL_MACHINE, 'SOFTWARE\WOW6432Node\Dedalus\Millewin');
+  if KeyExists then
+  begin
+    Result := True;
+    Exit;
+  end;
+
+  KeyExists := RegKeyExists(HKEY_LOCAL_MACHINE, 'SOFTWARE\Dedalus\Millewin');
+  if KeyExists then
+  begin
+    Result := True;
+    Exit;
+  end;
+
+  // Cerca l'eseguibile in percorsi comuni
+  if FileExists('C:\Millewin\millewin.exe') then
+  begin
+    Result := True;
+    Exit;
+  end;
+
+  if FileExists('C:\Program Files\Millewin\millewin.exe') then
+  begin
+    Result := True;
+    Exit;
+  end;
+
+  if FileExists('C:\Program Files (x86)\Millewin\millewin.exe') then
+  begin
+    Result := True;
+    Exit;
+  end;
+
+  if FileExists('C:\Programmi\Millewin\millewin.exe') then
+  begin
+    Result := True;
+    Exit;
+  end;
+end;
+
+// Funzione chiamata all'avvio dell'installazione
+function InitializeSetup(): Boolean;
+begin
+  Result := True;
+
+  // Verifica che Millewin sia installato
+  if not IsMillewinInstalled() then
+  begin
+    // MB_OK = 0, MB_ICONERROR = $10
+    MessageBoxW(0,
+      'MWCF-Extractor e'' utilizzabile solo se Millewin e'' installato nel sistema.',
+      'Millewin non trovato',
+      $10);
+    Result := False;
+  end;
+end;
+
 // Funzione per verificare se l'applicazione e' in esecuzione
 function IsAppRunning(): Boolean;
 var

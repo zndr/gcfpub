@@ -321,7 +321,7 @@ void showErrorMessage(HWND hwndParent, const std::wstring& title,
 void showNoPatientMessage(HWND hwndParent) {
     showTimedMessageBox(
         hwndParent,
-        L"Nessun paziente",
+        L"MWCF-Extractor - Avviso",
         L"Apri la cartella di un paziente per poterne estrarre il codice fiscale",
         MSGBOX_TIMEOUT_MS,
         MB_ICONINFORMATION
