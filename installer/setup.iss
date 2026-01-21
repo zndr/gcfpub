@@ -6,7 +6,7 @@
 ; ============================================================================
 
 #define MyAppName "MilleWin CF Extractor"
-#define MyAppVersion "1.3.6"
+#define MyAppVersion "1.3.7"
 #define MyAppPublisher "MWCFExtractor"
 #define MyAppExeName "mwcf_extractor.exe"
 #define MyAppId "MWCFExtractor"
@@ -152,10 +152,27 @@ begin
   end;
 end;
 
+// Funzione per terminare l'applicazione se in esecuzione
+procedure KillRunningApp();
+var
+  ResultCode: Integer;
+begin
+  // Metodo 1: taskkill diretto (piu' semplice e affidabile)
+  Exec('cmd.exe', '/c taskkill /F /IM {#MyAppExeName} >nul 2>&1', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Sleep(500);
+
+  // Metodo 2: wmic come fallback
+  Exec('cmd.exe', '/c wmic process where name="{#MyAppExeName}" delete >nul 2>&1', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Sleep(500);
+end;
+
 // Funzione chiamata all'avvio dell'installazione
 function InitializeSetup(): Boolean;
 begin
   Result := True;
+
+  // PRIMA DI TUTTO: termina l'applicazione se in esecuzione
+  KillRunningApp();
 
   // Verifica che Millewin sia installato
   if not IsMillewinInstalled() then
