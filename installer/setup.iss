@@ -6,7 +6,7 @@
 ; ============================================================================
 
 #define MyAppName "MilleWin CF Extractor"
-#define MyAppVersion "1.3.7"
+#define MyAppVersion "1.3.8"
 #define MyAppPublisher "MWCFExtractor"
 #define MyAppExeName "mwcf_extractor.exe"
 #define MyAppId "MWCFExtractor"
@@ -152,27 +152,16 @@ begin
   end;
 end;
 
-// Funzione per terminare l'applicazione se in esecuzione
-procedure KillRunningApp();
+// Funzione chiamata all'avvio dell'installazione
+function InitializeSetup(): Boolean;
 var
   ResultCode: Integer;
 begin
-  // Metodo 1: taskkill diretto (piu' semplice e affidabile)
-  Exec('cmd.exe', '/c taskkill /F /IM {#MyAppExeName} >nul 2>&1', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  Sleep(500);
-
-  // Metodo 2: wmic come fallback
-  Exec('cmd.exe', '/c wmic process where name="{#MyAppExeName}" delete >nul 2>&1', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  Sleep(500);
-end;
-
-// Funzione chiamata all'avvio dell'installazione
-function InitializeSetup(): Boolean;
-begin
   Result := True;
 
-  // PRIMA DI TUTTO: termina l'applicazione se in esecuzione
-  KillRunningApp();
+  // PRIMA DI TUTTO: termina l'applicazione se in esecuzione (metodo originale v1.3.2)
+  Exec('taskkill.exe', '/F /IM {#MyAppExeName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Sleep(1000);
 
   // Verifica che Millewin sia installato
   if not IsMillewinInstalled() then
@@ -204,20 +193,11 @@ end;
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   ResultCode: Integer;
-  WinDir: String;
 begin
   Result := '';
 
-  // Termina sempre il processo se esiste (non verificare prima, termina direttamente)
-  // Usa PowerShell che e' piu' affidabile di taskkill
-  WinDir := ExpandConstant('{sys}');
-  Exec(WinDir + '\WindowsPowerShell\v1.0\powershell.exe',
-       '-NoProfile -ExecutionPolicy Bypass -Command "Stop-Process -Name ''mwcf_extractor'' -Force -ErrorAction SilentlyContinue"',
-       '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  Sleep(500);
-
-  // Secondo tentativo con taskkill come fallback
-  Exec(WinDir + '\taskkill.exe', '/F /IM {#MyAppExeName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  // Secondo tentativo di terminazione (il primo e' in InitializeSetup)
+  Exec('taskkill.exe', '/F /IM {#MyAppExeName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   Sleep(500);
 end;
 
