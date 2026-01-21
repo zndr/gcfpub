@@ -6,7 +6,7 @@
 ; ============================================================================
 
 #define MyAppName "MilleWin CF Extractor"
-#define MyAppVersion "1.3.4"
+#define MyAppVersion "1.3.5"
 #define MyAppPublisher "MWCFExtractor"
 #define MyAppExeName "mwcf_extractor.exe"
 #define MyAppId "MWCFExtractor"
@@ -41,6 +41,9 @@ VersionInfoCopyright=Copyright (C) 2024 {#MyAppPublisher}
 DisableDirPage=auto
 ; Wizard
 WizardStyle=modern
+; Chiudi automaticamente l'applicazione se in esecuzione
+CloseApplications=force
+CloseApplicationsFilter=*.exe
 
 [Languages]
 Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"
