@@ -29,7 +29,10 @@
       "Bash(cmd.exe //c \"release.bat 1.3.3\")",
       "Bash(popd)",
       "Bash(cmd.exe //c \"cd /d D:\\\\Claude\\\\gcf && release.bat 1.3.3\")",
-      "Bash(cmd.exe //c \"D:\\\\Claude\\\\gcf\\\\release.bat 1.3.3\")"
+      "Bash(cmd.exe //c \"D:\\\\Claude\\\\gcf\\\\release.bat 1.3.3\")",
+      "Bash(\"/c/Program Files \\(x86\\)/Inno Setup 6/ISCC.exe\" //Q \"D:\\\\Claude\\\\gcf\\\\installer\\\\setup.iss\")",
+      "Bash(gh release delete:*)",
+      "Bash(gh release create:*)"
     ]
   }
 }
