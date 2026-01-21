@@ -6,7 +6,7 @@
 ; ============================================================================
 
 #define MyAppName "MilleWin CF Extractor"
-#define MyAppVersion "1.3.3"
+#define MyAppVersion "1.3.4"
 #define MyAppPublisher "MWCFExtractor"
 #define MyAppExeName "mwcf_extractor.exe"
 #define MyAppId "MWCFExtractor"
@@ -187,21 +187,12 @@ var
 begin
   Result := '';
 
-  // Se l'applicazione e' in esecuzione, chiedi di chiuderla
+  // Se l'applicazione e' in esecuzione, chiudila automaticamente
   if IsAppRunning() then
   begin
-    if MsgBox('MilleWin CF Extractor e'' in esecuzione.' + #13#10 +
-              'Vuoi chiuderlo automaticamente per procedere con l''installazione?',
-              mbConfirmation, MB_YESNO) = IDYES then
-    begin
-      // Termina il processo
-      Exec('taskkill.exe', '/F /IM {#MyAppExeName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-      Sleep(1000); // Attendi un secondo
-    end
-    else
-    begin
-      Result := 'Chiudi MilleWin CF Extractor prima di procedere.';
-    end;
+    // Termina il processo automaticamente senza chiedere
+    Exec('taskkill.exe', '/F /IM {#MyAppExeName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    Sleep(1000); // Attendi un secondo per assicurarsi che il processo sia terminato
   end;
 end;
 
